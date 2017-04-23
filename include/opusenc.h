@@ -29,7 +29,7 @@ OggOpusEnc *ope_create_callbacks(OpusEncCallbacks *callbacks, void *user_data, i
 int ope_write_float(OggOpusEnc *enc, float *pcm, int samples_per_channel);
 
 /* Add/encode any number of int16 samples to the file. */
-int ope_write_int(OggOpusEnc *enc, opus_int16 *pcm, int samples_per_channel);
+int ope_write(OggOpusEnc *enc, opus_int16 *pcm, int samples_per_channel);
 
 /* Close/finalize the stream. */
 int ope_free(OggOpusEnc *enc);

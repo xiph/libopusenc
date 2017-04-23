@@ -1,0 +1,15 @@
+# opusenc installed pkg-config file
+
+prefix=@prefix@
+exec_prefix=@exec_prefix@
+libdir=@libdir@
+includedir=@includedir@
+
+Name: libopusenc
+Description: High-level Opus decoding library
+Version: @PACKAGE_VERSION@
+Requires.private: ogg >= 1.3 opus >= 1.0.1
+Conflicts:
+Libs: -L${libdir} -lopusenc
+Libs.private: @lrintf_lib@
+Cflags: -I${includedir}/opus

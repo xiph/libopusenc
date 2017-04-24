@@ -34,9 +34,26 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include "opusenc.h"
+#include <opus_multistream.h>
+
+struct StdioObject {
+  FILE *file;
+};
+
+struct OggOpusEnc {
+  OpusMSEncoder *enc;
+};
 
 int stdio_write(void *user_data, const unsigned char *ptr, int len) {
-  return fwrite(ptr, 1, len, (FILE*)user_data) != len;
+  struct StdioObject *obj = (struct StdioObject*)user_data;
+  return fwrite(ptr, 1, len, obj->file) != len;
+}
+
+int stdio_close(void *user_data) {
+  struct StdioObject *obj = (struct StdioObject*)user_data;
+  int ret = fclose(obj->file);
+  free(obj);
+  return ret;
 }
 
 static const OpusEncCallbacks stdio_callbacks = {
@@ -47,12 +64,21 @@ static const OpusEncCallbacks stdio_callbacks = {
 /* Create a new OggOpus file. */
 OggOpusEnc *ope_create_file(const char *path, const OggOpusComments *comments,
     int rate, int channels, int family, int *error) {
-  FILE *file = fopen(path, "wb");
-  if (!file) {
-    if (error) *error = OPE_ERROR_CANNOT_OPEN;
+  OggOpusEnc *enc;
+  struct StdioObject *obj;
+  obj = malloc(sizeof(*obj));
+  enc = ope_create_callbacks(&stdio_callbacks, obj, comments, rate, channels, family, error);
+  if (enc == NULL || (error && *error)) {
     return NULL;
   }
-  return ope_create_callbacks(&stdio_callbacks, file, comments, rate, channels, family, error);
+  obj->file = fopen(path, "wb");
+  if (!obj->file) {
+    if (error) *error = OPE_ERROR_CANNOT_OPEN;
+    /* FIXME: Destroy the encoder properly. */
+    free(obj);
+    return NULL;
+  }
+  return enc;
 }
 
 /* Create a new OggOpus file (callback-based). */
@@ -71,9 +97,14 @@ int ope_write(OggOpusEnc *enc, opus_int16 *pcm, int samples_per_channel) {
   return 0;
 }
 
+static void finalize_stream(OggOpusEnc *enc) {
+}
+
 /* Close/finalize the stream. */
 int ope_close_and_free(OggOpusEnc *enc) {
-  return 0;
+  finalize_stream(enc);
+  opus_encoder_destroy(enc);
+  return OPE_OK;
 }
 
 /* Ends the stream and create a new stream within the same file. */

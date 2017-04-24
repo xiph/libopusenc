@@ -32,17 +32,32 @@
 #endif
 
 #include <stdlib.h>
+#include <stdio.h>
 #include "opusenc.h"
+
+int stdio_write(void *user_data, const unsigned char *ptr, int len) {
+  return fwrite(ptr, 1, len, (FILE*)user_data) != len;
+}
+
+static const OpusEncCallbacks stdio_callbacks = {
+  stdio_write,
+  fclose
+};
 
 /* Create a new OggOpus file. */
 OggOpusEnc *ope_create_file(const char *path, const OggOpusComments *comments,
-  int rate, int channels, int family, int *error) {
-  return NULL;
+    int rate, int channels, int family, int *error) {
+  FILE *file = fopen(path, "wb");
+  if (!file) {
+    if (error) *error = OPE_ERROR_CANNOT_OPEN;
+    return NULL;
+  }
+  return ope_create_callbacks(&stdio_callbacks, file, comments, rate, channels, family, error);
 }
 
 /* Create a new OggOpus file (callback-based). */
-OggOpusEnc *ope_create_callbacks(OpusEncCallbacks *callbacks, const OggOpusComments *comments,
-  void *user_data, int rate, int channels, int family, int *error) {
+OggOpusEnc *ope_create_callbacks(const OpusEncCallbacks *callbacks, void *user_data,
+    const OggOpusComments *comments, int rate, int channels, int family, int *error) {
   return NULL;
 }
 

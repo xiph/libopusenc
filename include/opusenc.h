@@ -34,6 +34,9 @@ extern "C" {
 
 #include "opus.h"
 
+#define OPE_OK 0
+#define OPE_ERROR_CANNOT_OPEN -10
+
 typedef int (*ope_write_func)(void *user_data, const unsigned char *ptr, int len);
 
 typedef int (*ope_close_func)(void *user_data);
@@ -51,11 +54,11 @@ typedef struct OggOpusComments OggOpusComments;
 
 /** Create a new OggOpus file. */
 OggOpusEnc *ope_create_file(const char *path, const OggOpusComments *comments,
-  int rate, int channels, int family, int *error);
+    int rate, int channels, int family, int *error);
 
 /** Create a new OggOpus file (callback-based). */
-OggOpusEnc *ope_create_callbacks(OpusEncCallbacks *callbacks, const OggOpusComments *comments,
-  void *user_data, int rate, int channels, int family, int *error);
+OggOpusEnc *ope_create_callbacks(const OpusEncCallbacks *callbacks, void *user_data,
+    const OggOpusComments *comments, int rate, int channels, int family, int *error);
 
 /** Add/encode any number of float samples to the file. */
 int ope_write_float(OggOpusEnc *enc, float *pcm, int samples_per_channel);

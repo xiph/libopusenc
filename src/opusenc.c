@@ -31,8 +31,11 @@
 #include "config.h"
 #endif
 
+#include <time.h>
+#include <unistd.h>
 #include <stdlib.h>
 #include <stdio.h>
+#include <assert.h>
 #include <opus_multistream.h>
 #include "opusenc.h"
 #include "opus_header.h"
@@ -48,6 +51,10 @@ struct OggOpusEnc {
   float *buffer;
   OpusEncCallbacks callbacks;
   void *user_data;
+  int os_allocated;
+  ogg_stream_state os;
+  ogg_page og;
+  ogg_packet op;
 };
 
 int stdio_write(void *user_data, const unsigned char *ptr, int len) {
@@ -79,7 +86,7 @@ OggOpusEnc *ope_create_file(const char *path, const OggOpusComments *comments,
   }
   obj->file = fopen(path, "wb");
   if (!obj->file) {
-    if (error) *error = OPE_ERROR_CANNOT_OPEN;
+    if (error) *error = OPE_CANNOT_OPEN;
     /* FIXME: Destroy the encoder properly. */
     free(obj);
     return NULL;
@@ -95,7 +102,7 @@ OggOpusEnc *ope_create_callbacks(const OpusEncCallbacks *callbacks, void *user_d
   OpusHeader header;
   int ret;
   if (family != 0 && family != 1 && family != 255) {
-    if (error) *error = OPE_ERROR_UNIMPLEMENTED;
+    if (error) *error = OPE_UNIMPLEMENTED;
     return NULL;
   }
   if (channels <= 0 || channels > 255) {
@@ -112,6 +119,7 @@ OggOpusEnc *ope_create_callbacks(const OpusEncCallbacks *callbacks, void *user_d
     goto fail;
   }
   if ( (enc = malloc(sizeof(*enc))) == NULL) goto fail;
+  enc->os_allocated = 0;
   if ( (enc->buffer = malloc(sizeof(*enc->buffer)*BUFFER_SAMPLES*channels)) == NULL) goto fail;
   enc->st = st;
   enc->callbacks = *callbacks;
@@ -127,6 +135,19 @@ fail:
     opus_multistream_encoder_destroy(st);
   }
   return NULL;
+}
+
+static void init_stream(OggOpusEnc *enc) {
+  time_t start_time;
+  int serialno;
+  start_time = time(NULL);
+  srand(((getpid()&65535)<<15)^start_time);
+
+  serialno = rand();
+  if (ogg_stream_init(&enc->os, serialno) == -1) {
+    assert(0);
+    /* FIXME: How the hell do we handle that? */
+  }
 }
 
 /* Add/encode any number of float samples to the file. */
@@ -154,6 +175,7 @@ int ope_close_and_free(OggOpusEnc *enc) {
   finalize_stream(enc);
   free(enc->buffer);
   opus_multistream_encoder_destroy(enc->st);
+  if (enc->os_allocated) ogg_stream_clear(&enc->os);
   return OPE_OK;
 }
 

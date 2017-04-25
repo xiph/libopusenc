@@ -35,8 +35,9 @@ extern "C" {
 #include "opus.h"
 
 #define OPE_OK 0
-#define OPE_ERROR_CANNOT_OPEN -10
-#define OPE_ERROR_UNIMPLEMENTED -11
+#define OPE_CANNOT_OPEN -10
+#define OPE_UNIMPLEMENTED -11
+#define OPE_BAD_ARG -12
 
 typedef int (*ope_write_func)(void *user_data, const unsigned char *ptr, int len);
 

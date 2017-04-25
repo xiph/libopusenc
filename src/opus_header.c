@@ -156,6 +156,102 @@ int opus_header_to_packet(const OpusHeader *h, unsigned char *packet, int len)
    return p.pos;
 }
 
+/*
+ Comments will be stored in the Vorbis style.
+ It is described in the "Structure" section of
+    http://www.xiph.org/ogg/vorbis/doc/v-comment.html
+
+ However, Opus and other non-vorbis formats omit the "framing_bit".
+
+The comment header is decoded as follows:
+  1) [vendor_length] = read an unsigned integer of 32 bits
+  2) [vendor_string] = read a UTF-8 vector as [vendor_length] octets
+  3) [user_comment_list_length] = read an unsigned integer of 32 bits
+  4) iterate [user_comment_list_length] times {
+     5) [length] = read an unsigned integer of 32 bits
+     6) this iteration's user comment = read a UTF-8 vector as [length] octets
+     }
+  7) done.
+*/
+
+#define readint(buf, base) (((buf[base+3]<<24)&0xff000000)| \
+                           ((buf[base+2]<<16)&0xff0000)| \
+                           ((buf[base+1]<<8)&0xff00)| \
+                           (buf[base]&0xff))
+#define writeint(buf, base, val) do{ buf[base+3]=((val)>>24)&0xff; \
+                                     buf[base+2]=((val)>>16)&0xff; \
+                                     buf[base+1]=((val)>>8)&0xff; \
+                                     buf[base]=(val)&0xff; \
+                                 }while(0)
+
+void comment_init(char **comments, int* length, const char *vendor_string)
+{
+  /*The 'vendor' field should be the actual encoding library used.*/
+  int vendor_length=strlen(vendor_string);
+  int user_comment_list_length=0;
+  int len=8+4+vendor_length+4;
+  char *p=(char*)malloc(len);
+  if(p==NULL){
+    fprintf(stderr, "malloc failed in comment_init()\n");
+    exit(1);
+  }
+  memcpy(p, "OpusTags", 8);
+  writeint(p, 8, vendor_length);
+  memcpy(p+12, vendor_string, vendor_length);
+  writeint(p, 12+vendor_length, user_comment_list_length);
+  *length=len;
+  *comments=p;
+}
+
+void comment_add(char **comments, int* length, char *tag, char *val)
+{
+  char* p=*comments;
+  int vendor_length=readint(p, 8);
+  int user_comment_list_length=readint(p, 8+4+vendor_length);
+  int tag_len=(tag?strlen(tag)+1:0);
+  int val_len=strlen(val);
+  int len=(*length)+4+tag_len+val_len;
+
+  p=(char*)realloc(p, len);
+  if(p==NULL){
+    fprintf(stderr, "realloc failed in comment_add()\n");
+    exit(1);
+  }
+
+  writeint(p, *length, tag_len+val_len);      /* length of comment */
+  if(tag){
+    memcpy(p+*length+4, tag, tag_len);        /* comment tag */
+    (p+*length+4)[tag_len-1] = '=';           /* separator */
+  }
+  memcpy(p+*length+4+tag_len, val, val_len);  /* comment */
+  writeint(p, 8+4+vendor_length, user_comment_list_length+1);
+  *comments=p;
+  *length=len;
+}
+
+void comment_pad(char **comments, int* length, int amount)
+{
+  if(amount>0){
+    int i;
+    int newlen;
+    char* p=*comments;
+    /*Make sure there is at least amount worth of padding free, and
+       round up to the maximum that fits in the current ogg segments.*/
+    newlen=(*length+amount+255)/255*255-1;
+    p=realloc(p,newlen);
+    if(p==NULL){
+      fprintf(stderr,"realloc failed in comment_pad()\n");
+      exit(1);
+    }
+    for(i=*length;i<newlen;i++)p[i]=0;
+    *comments=p;
+    *length=newlen;
+  }
+}
+#undef readint
+#undef writeint
+
+
 /* This is just here because it's a convenient file linked by both opusenc and
    opusdec (to guarantee this maps stays in sync). */
 const int wav_permute_matrix[8][8] =

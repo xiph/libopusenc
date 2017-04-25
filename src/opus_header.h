@@ -28,6 +28,7 @@
 #ifndef OPUS_HEADER_H
 #define OPUS_HEADER_H
 
+#include <stdlib.h>
 #include <ogg/ogg.h>
 
 typedef struct {
@@ -46,5 +47,11 @@ typedef struct {
 int opus_header_to_packet(const OpusHeader *h, unsigned char *packet, int len);
 
 extern const int wav_permute_matrix[8][8];
+
+void comment_init(char **comments, int* length, const char *vendor_string);
+
+void comment_add(char **comments, int* length, char *tag, char *val);
+
+void comment_pad(char **comments, int* length, int amount);
 
 #endif

@@ -36,6 +36,7 @@ extern "C" {
 
 #define OPE_OK 0
 #define OPE_ERROR_CANNOT_OPEN -10
+#define OPE_ERROR_UNIMPLEMENTED -11
 
 typedef int (*ope_write_func)(void *user_data, const unsigned char *ptr, int len);
 
@@ -70,7 +71,7 @@ int ope_write(OggOpusEnc *enc, opus_int16 *pcm, int samples_per_channel);
 int ope_close_and_free(OggOpusEnc *enc);
 
 /** Ends the stream and create a new stream within the same file. */
-int ope_chain_current(OggOpusEnc *enc);
+int ope_chain_current(OggOpusEnc *enc, const OggOpusComments *comments);
 
 /** Ends the stream and create a new file. */
 int ope_continue_new_file(OggOpusEnc *enc, const OggOpusComments *comments, const char *path);

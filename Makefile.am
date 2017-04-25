@@ -9,6 +9,7 @@ opusinclude_HEADERS = include/opusenc.h
 
 lib_LTLIBRARIES = libopusenc.la
 libopusenc_la_SOURCES = \
+	src/opus_header.c \
 	src/opusenc.c
 libopusenc_la_LIBADD = $(DEPS_LIBS) $(lrintf_lib)
 libopusenc_la_LDFLAGS = -no-undefined \

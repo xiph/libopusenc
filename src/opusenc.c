@@ -33,20 +33,24 @@
 
 #include <stdlib.h>
 #include <stdio.h>
-#include "opusenc.h"
 #include <opus_multistream.h>
+#include "opusenc.h"
+#include "opus_header.h"
 
 struct StdioObject {
   FILE *file;
 };
 
 struct OggOpusEnc {
-  OpusMSEncoder *enc;
+  OpusMSEncoder *st;
+  float *buffer;
+  OpusEncCallbacks callbacks;
+  void *user_data;
 };
 
 int stdio_write(void *user_data, const unsigned char *ptr, int len) {
   struct StdioObject *obj = (struct StdioObject*)user_data;
-  return fwrite(ptr, 1, len, obj->file) != len;
+  return fwrite(ptr, 1, len, obj->file) != (size_t)len;
 }
 
 int stdio_close(void *user_data) {
@@ -58,7 +62,7 @@ int stdio_close(void *user_data) {
 
 static const OpusEncCallbacks stdio_callbacks = {
   stdio_write,
-  fclose
+  stdio_close
 };
 
 /* Create a new OggOpus file. */
@@ -84,50 +88,100 @@ OggOpusEnc *ope_create_file(const char *path, const OggOpusComments *comments,
 /* Create a new OggOpus file (callback-based). */
 OggOpusEnc *ope_create_callbacks(const OpusEncCallbacks *callbacks, void *user_data,
     const OggOpusComments *comments, int rate, int channels, int family, int *error) {
+  OpusMSEncoder *st=NULL;
+  OggOpusEnc *enc=NULL;
+  OpusHeader header;
+  int ret;
+  if (family != 0 && family != 1 && family != 255) {
+    if (error) *error = OPE_ERROR_UNIMPLEMENTED;
+    return NULL;
+  }
+  header.channels=channels;
+  header.channel_mapping=family;
+  header.input_sample_rate=rate;
+  header.gain=0;
+  st=opus_multistream_surround_encoder_create(48000, channels, header.channel_mapping, &header.nb_streams, &header.nb_coupled,
+     header.stream_map, OPUS_APPLICATION_AUDIO, &ret);
+  if (! (ret == OPUS_OK && st != NULL) ) {
+    goto fail;
+  }
+  if ( (enc = malloc(sizeof(*enc))) == NULL) goto fail;
+  enc->st = st;
+  enc->callbacks = *callbacks;
+  enc->user_data = user_data;
+  (void)comments;
+  return enc;
+fail:
+  if (enc) {
+    free(enc);
+  }
+  if (st) {
+    opus_multistream_encoder_destroy(st);
+  }
   return NULL;
 }
 
 /* Add/encode any number of float samples to the file. */
 int ope_write_float(OggOpusEnc *enc, float *pcm, int samples_per_channel) {
+  (void)enc;
+  (void)pcm;
+  (void)samples_per_channel;
   return 0;
 }
 
 /* Add/encode any number of int16 samples to the file. */
 int ope_write(OggOpusEnc *enc, opus_int16 *pcm, int samples_per_channel) {
+  (void)enc;
+  (void)pcm;
+  (void)samples_per_channel;
   return 0;
 }
 
 static void finalize_stream(OggOpusEnc *enc) {
+  (void)enc;
 }
 
 /* Close/finalize the stream. */
 int ope_close_and_free(OggOpusEnc *enc) {
   finalize_stream(enc);
-  opus_encoder_destroy(enc);
+  free(enc->buffer);
+  opus_multistream_encoder_destroy(enc->st);
   return OPE_OK;
 }
 
 /* Ends the stream and create a new stream within the same file. */
-int ope_chain_current(OggOpusEnc *enc) {
+int ope_chain_current(OggOpusEnc *enc, const OggOpusComments *comments) {
+  (void)enc;
+  (void)comments;
   return 0;
 }
 
 /* Ends the stream and create a new file. */
 int ope_continue_new_file(OggOpusEnc *enc, const OggOpusComments *comments, const char *path) {
+  (void)enc;
+  (void)comments;
+  (void)path;
   return 0;
 }
 
 /* Ends the stream and create a new file (callback-based). */
 int ope_continue_new_callbacks(OggOpusEnc *enc, const OggOpusComments *comments, void *user_data) {
+  (void)enc;
+  (void)comments;
+  (void)user_data;
   return 0;
 }
 
 /* Goes straight to the libopus ctl() functions. */
 int ope_encoder_ctl(OggOpusEnc *enc, int request, ...) {
+  (void)enc;
+  (void)request;
   return 0;
 }
 
 /* ctl()-type call for the OggOpus layer. */
 int ope_set_params(OggOpusEnc *enc, int request, ...) {
+  (void)enc;
+  (void)request;
   return 0;
 }

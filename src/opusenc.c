@@ -37,6 +37,8 @@
 #include "opusenc.h"
 #include "opus_header.h"
 
+#define BUFFER_SAMPLES 96000
+
 struct StdioObject {
   FILE *file;
 };
@@ -96,6 +98,10 @@ OggOpusEnc *ope_create_callbacks(const OpusEncCallbacks *callbacks, void *user_d
     if (error) *error = OPE_ERROR_UNIMPLEMENTED;
     return NULL;
   }
+  if (channels <= 0 || channels > 255) {
+    if (error) *error = OPE_BAD_ARG;
+    return NULL;
+  }
   header.channels=channels;
   header.channel_mapping=family;
   header.input_sample_rate=rate;
@@ -106,6 +112,7 @@ OggOpusEnc *ope_create_callbacks(const OpusEncCallbacks *callbacks, void *user_d
     goto fail;
   }
   if ( (enc = malloc(sizeof(*enc))) == NULL) goto fail;
+  if ( (enc->buffer = malloc(sizeof(*enc->buffer)*BUFFER_SAMPLES*channels)) == NULL) goto fail;
   enc->st = st;
   enc->callbacks = *callbacks;
   enc->user_data = user_data;
@@ -114,6 +121,7 @@ OggOpusEnc *ope_create_callbacks(const OpusEncCallbacks *callbacks, void *user_d
 fail:
   if (enc) {
     free(enc);
+    if (enc->buffer) free(enc->buffer);
   }
   if (st) {
     opus_multistream_encoder_destroy(st);

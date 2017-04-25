@@ -42,6 +42,15 @@
 
 #define BUFFER_SAMPLES 96000
 
+static int oe_write_page(ogg_page *page, OpusEncCallbacks *cb, void *user_data)
+{
+   int written;
+   written=cb->write(user_data, page->header, page->header_len);
+   written+=cb->write(user_data, page->body, page->body_len);
+   return written;
+}
+
+
 struct StdioObject {
   FILE *file;
 };
@@ -55,6 +64,7 @@ struct OggOpusEnc {
   ogg_stream_state os;
   ogg_page og;
   ogg_packet op;
+  OpusHeader header;
 };
 
 int stdio_write(void *user_data, const unsigned char *ptr, int len) {
@@ -99,7 +109,6 @@ OggOpusEnc *ope_create_callbacks(const OpusEncCallbacks *callbacks, void *user_d
     const OggOpusComments *comments, int rate, int channels, int family, int *error) {
   OpusMSEncoder *st=NULL;
   OggOpusEnc *enc=NULL;
-  OpusHeader header;
   int ret;
   if (family != 0 && family != 1 && family != 255) {
     if (error) *error = OPE_UNIMPLEMENTED;
@@ -109,12 +118,13 @@ OggOpusEnc *ope_create_callbacks(const OpusEncCallbacks *callbacks, void *user_d
     if (error) *error = OPE_BAD_ARG;
     return NULL;
   }
-  header.channels=channels;
-  header.channel_mapping=family;
-  header.input_sample_rate=rate;
-  header.gain=0;
-  st=opus_multistream_surround_encoder_create(48000, channels, header.channel_mapping, &header.nb_streams, &header.nb_coupled,
-     header.stream_map, OPUS_APPLICATION_AUDIO, &ret);
+  enc->header.channels=channels;
+  enc->header.channel_mapping=family;
+  enc->header.input_sample_rate=rate;
+  enc->header.gain=0;
+  st=opus_multistream_surround_encoder_create(48000, channels, enc->header.channel_mapping,
+      &enc->header.nb_streams, &enc->header.nb_coupled,
+      enc->header.stream_map, OPUS_APPLICATION_AUDIO, &ret);
   if (! (ret == OPUS_OK && st != NULL) ) {
     goto fail;
   }
@@ -148,6 +158,48 @@ static void init_stream(OggOpusEnc *enc) {
     assert(0);
     /* FIXME: How the hell do we handle that? */
   }
+  /* FIXME: Compute preskip. */
+  enc->header.preskip = 0;
+
+  /*Write header*/
+  {
+    int ret;
+    ogg_packet op;
+    ogg_page og;
+    /*The Identification Header is 19 bytes, plus a Channel Mapping Table for
+      mapping families other than 0. The Channel Mapping Table is 2 bytes +
+      1 byte per channel. Because the maximum number of channels is 255, the
+      maximum size of this header is 19 + 2 + 255 = 276 bytes.*/
+    unsigned char header_data[276];
+    int packet_size = opus_header_to_packet(&enc->header, header_data, sizeof(header_data));
+    op.packet=header_data;
+    op.bytes=packet_size;
+    op.b_o_s=1;
+    op.e_o_s=0;
+    op.granulepos=0;
+    op.packetno=0;
+    ogg_stream_packetin(&enc->os, &op);
+
+    while ( (ret = ogg_stream_flush(&enc->os, &og)) ) {
+      if (!ret) break;
+      ret = oe_write_page(&og, &enc->callbacks, enc->user_data);
+      if (ret){
+        /* FIXME: How do we handle that? */
+        assert(0);
+      }
+    }
+#if 0
+    comment_pad(&inopt.comments, &inopt.comments_length, comment_padding);
+    op.packet = (unsigned char *)inopt.comments;
+    op.bytes = inopt.comments_length;
+    op.b_o_s = 0;
+    op.e_o_s = 0;
+    op.granulepos = 0;
+    op.packetno = 1;
+    ogg_stream_packetin(&enc->os, &op);
+#endif
+  }
+
 }
 
 /* Add/encode any number of float samples to the file. */

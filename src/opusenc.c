@@ -85,12 +85,11 @@ static const OpusEncCallbacks stdio_callbacks = {
 };
 
 /* Create a new OggOpus file. */
-OggOpusEnc *ope_create_file(const char *path, const OggOpusComments *comments,
-    int rate, int channels, int family, int *error) {
+OggOpusEnc *ope_create_file(const char *path, int rate, int channels, int family, int *error) {
   OggOpusEnc *enc;
   struct StdioObject *obj;
   obj = malloc(sizeof(*obj));
-  enc = ope_create_callbacks(&stdio_callbacks, obj, comments, rate, channels, family, error);
+  enc = ope_create_callbacks(&stdio_callbacks, obj, rate, channels, family, error);
   if (enc == NULL || (error && *error)) {
     return NULL;
   }
@@ -106,7 +105,7 @@ OggOpusEnc *ope_create_file(const char *path, const OggOpusComments *comments,
 
 /* Create a new OggOpus file (callback-based). */
 OggOpusEnc *ope_create_callbacks(const OpusEncCallbacks *callbacks, void *user_data,
-    const OggOpusComments *comments, int rate, int channels, int family, int *error) {
+    int rate, int channels, int family, int *error) {
   OpusMSEncoder *st=NULL;
   OggOpusEnc *enc=NULL;
   int ret;
@@ -134,7 +133,6 @@ OggOpusEnc *ope_create_callbacks(const OpusEncCallbacks *callbacks, void *user_d
   enc->st = st;
   enc->callbacks = *callbacks;
   enc->user_data = user_data;
-  (void)comments;
   return enc;
 fail:
   if (enc) {
@@ -232,26 +230,38 @@ int ope_close_and_free(OggOpusEnc *enc) {
 }
 
 /* Ends the stream and create a new stream within the same file. */
-int ope_chain_current(OggOpusEnc *enc, const OggOpusComments *comments) {
+int ope_chain_current(OggOpusEnc *enc) {
   (void)enc;
-  (void)comments;
   return 0;
 }
 
 /* Ends the stream and create a new file. */
-int ope_continue_new_file(OggOpusEnc *enc, const OggOpusComments *comments, const char *path) {
+int ope_continue_new_file(OggOpusEnc *enc, const char *path) {
   (void)enc;
-  (void)comments;
   (void)path;
   return 0;
 }
 
 /* Ends the stream and create a new file (callback-based). */
-int ope_continue_new_callbacks(OggOpusEnc *enc, const OggOpusComments *comments, void *user_data) {
+int ope_continue_new_callbacks(OggOpusEnc *enc, void *user_data) {
   (void)enc;
-  (void)comments;
   (void)user_data;
   return 0;
+}
+
+/* Add a comment to the file (can only be called before encoding samples). */
+int ope_add_comment(OggOpusEnc *enc, char *tag, char *val) {
+  (void)enc;
+  (void)tag;
+  (void)val;
+  return OPE_OK;
+}
+
+/* Sets the Opus comment vendor string (optional, defaults to library info). */
+int ope_set_vendor_string(OggOpusEnc *enc, char *vendor) {
+  (void)enc;
+  (void)vendor;
+  return OPE_OK;
 }
 
 /* Goes straight to the libopus ctl() functions. */

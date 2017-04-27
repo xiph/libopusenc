@@ -135,6 +135,7 @@ OggOpusEnc *ope_create_callbacks(const OpusEncCallbacks *callbacks, void *user_d
     if (error) *error = OPE_BAD_ARG;
     return NULL;
   }
+  if ( (enc = malloc(sizeof(*enc))) == NULL) goto fail;
   enc->header.channels=channels;
   enc->header.channel_mapping=family;
   enc->header.input_sample_rate=rate;
@@ -145,7 +146,6 @@ OggOpusEnc *ope_create_callbacks(const OpusEncCallbacks *callbacks, void *user_d
   if (! (ret == OPUS_OK && st != NULL) ) {
     goto fail;
   }
-  if ( (enc = malloc(sizeof(*enc))) == NULL) goto fail;
   enc->os_allocated = 0;
   enc->comment = NULL;
   comment_init(&enc->comment, &enc->comment_length, opus_get_version_string());

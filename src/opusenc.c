@@ -40,6 +40,8 @@
 #include "opusenc.h"
 #include "opus_header.h"
 
+#define LPC_PADDING 120
+
 /* Allow up to 2 seconds for delayed decision. */
 #define MAX_LOOKAHEAD 96000
 /* We can't have a circular buffer (because of delayed decision), so let's not copy too often. */
@@ -68,13 +70,11 @@ struct OggOpusEnc {
   int buffer_end;
   OpusEncCallbacks callbacks;
   void *user_data;
-  int os_allocated;
-  ogg_stream_state os;
-  ogg_page og;
-  ogg_packet op;
   OpusHeader header;
   char *comment;
   int comment_length;
+  int os_allocated;
+  ogg_stream_state os;
   int stream_is_init;
 };
 

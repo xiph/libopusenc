@@ -44,12 +44,13 @@
 
 static int oe_write_page(ogg_page *page, OpusEncCallbacks *cb, void *user_data)
 {
-   int written;
-   written=cb->write(user_data, page->header, page->header_len);
-   written+=cb->write(user_data, page->body, page->body_len);
-   return written;
+   int err;
+   err = cb->write(user_data, page->header, page->header_len);
+   if (err) return -1;
+   err = cb->write(user_data, page->body, page->body_len);
+   if (err) return -1;
+   return page->header_len+page->body_len;
 }
-
 
 struct StdioObject {
   FILE *file;
@@ -65,7 +66,24 @@ struct OggOpusEnc {
   ogg_page og;
   ogg_packet op;
   OpusHeader header;
+  char *comment;
+  int comment_length;
 };
+
+static int oe_flush_page(OggOpusEnc *enc) {
+  ogg_page og;
+  int ret;
+  int written = 0;
+  while ( (ret = ogg_stream_flush(&enc->os, &og)) ) {
+    if (!ret) break;
+    ret = oe_write_page(&og, &enc->callbacks, enc->user_data);
+    if (ret == -1) {
+      return -1;
+    }
+    written += ret;
+  }
+  return written;
+}
 
 int stdio_write(void *user_data, const unsigned char *ptr, int len) {
   struct StdioObject *obj = (struct StdioObject*)user_data;
@@ -129,6 +147,15 @@ OggOpusEnc *ope_create_callbacks(const OpusEncCallbacks *callbacks, void *user_d
   }
   if ( (enc = malloc(sizeof(*enc))) == NULL) goto fail;
   enc->os_allocated = 0;
+  enc->comment = NULL;
+  comment_init(&enc->comment, &enc->comment_length, opus_get_version_string());
+  {
+    char encoder_string[1024];
+    snprintf(encoder_string, sizeof(encoder_string), "libopusenc version %s %s",PACKAGE_NAME,PACKAGE_VERSION);
+    comment_add(&enc->comment, &enc->comment_length, "ENCODER", encoder_string);
+    comment_pad(&enc->comment, &enc->comment_length, 512);
+  }
+  if (enc->comment == NULL) goto fail;
   if ( (enc->buffer = malloc(sizeof(*enc->buffer)*BUFFER_SAMPLES*channels)) == NULL) goto fail;
   enc->st = st;
   enc->callbacks = *callbacks;
@@ -161,9 +188,7 @@ static void init_stream(OggOpusEnc *enc) {
 
   /*Write header*/
   {
-    int ret;
     ogg_packet op;
-    ogg_page og;
     /*The Identification Header is 19 bytes, plus a Channel Mapping Table for
       mapping families other than 0. The Channel Mapping Table is 2 bytes +
       1 byte per channel. Because the maximum number of channels is 255, the
@@ -177,25 +202,16 @@ static void init_stream(OggOpusEnc *enc) {
     op.granulepos=0;
     op.packetno=0;
     ogg_stream_packetin(&enc->os, &op);
+    oe_flush_page(enc);
 
-    while ( (ret = ogg_stream_flush(&enc->os, &og)) ) {
-      if (!ret) break;
-      ret = oe_write_page(&og, &enc->callbacks, enc->user_data);
-      if (ret){
-        /* FIXME: How do we handle that? */
-        assert(0);
-      }
-    }
-#if 0
-    comment_pad(&inopt.comments, &inopt.comments_length, comment_padding);
-    op.packet = (unsigned char *)inopt.comments;
-    op.bytes = inopt.comments_length;
+    op.packet = (unsigned char *)enc->comment;
+    op.bytes = enc->comment_length;
     op.b_o_s = 0;
     op.e_o_s = 0;
     op.granulepos = 0;
     op.packetno = 1;
     ogg_stream_packetin(&enc->os, &op);
-#endif
+    oe_flush_page(enc);
   }
 
 }

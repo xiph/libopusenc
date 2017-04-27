@@ -191,10 +191,7 @@ void comment_init(char **comments, int* length, const char *vendor_string)
   int user_comment_list_length=0;
   int len=8+4+vendor_length+4;
   char *p=(char*)malloc(len);
-  if(p==NULL){
-    fprintf(stderr, "malloc failed in comment_init()\n");
-    exit(1);
-  }
+  if (p == NULL) return;
   memcpy(p, "OpusTags", 8);
   writeint(p, 8, vendor_length);
   memcpy(p+12, vendor_string, vendor_length);
@@ -213,10 +210,7 @@ void comment_add(char **comments, int* length, char *tag, char *val)
   int len=(*length)+4+tag_len+val_len;
 
   p=(char*)realloc(p, len);
-  if(p==NULL){
-    fprintf(stderr, "realloc failed in comment_add()\n");
-    exit(1);
-  }
+  if (p == NULL) return;
 
   writeint(p, *length, tag_len+val_len);      /* length of comment */
   if(tag){
@@ -239,10 +233,7 @@ void comment_pad(char **comments, int* length, int amount)
        round up to the maximum that fits in the current ogg segments.*/
     newlen=(*length+amount+255)/255*255-1;
     p=realloc(p,newlen);
-    if(p==NULL){
-      fprintf(stderr,"realloc failed in comment_pad()\n");
-      exit(1);
-    }
+    if (p == NULL) return;
     for(i=*length;i<newlen;i++)p[i]=0;
     *comments=p;
     *length=newlen;

@@ -200,7 +200,7 @@ void comment_init(char **comments, int* length, const char *vendor_string)
   *comments=p;
 }
 
-void comment_add(char **comments, int* length, char *tag, char *val)
+int comment_add(char **comments, int* length, char *tag, char *val)
 {
   char* p=*comments;
   int vendor_length=readint(p, 8);
@@ -210,7 +210,7 @@ void comment_add(char **comments, int* length, char *tag, char *val)
   int len=(*length)+4+tag_len+val_len;
 
   p=(char*)realloc(p, len);
-  if (p == NULL) return;
+  if (p == NULL) return 1;
 
   writeint(p, *length, tag_len+val_len);      /* length of comment */
   if(tag){
@@ -221,6 +221,7 @@ void comment_add(char **comments, int* length, char *tag, char *val)
   writeint(p, 8+4+vendor_length, user_comment_list_length+1);
   *comments=p;
   *length=len;
+  return 0;
 }
 
 void comment_pad(char **comments, int* length, int amount)

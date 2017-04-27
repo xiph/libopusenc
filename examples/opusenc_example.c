@@ -19,6 +19,8 @@ int main(int argc, char **argv) {
     printf("cannout open output file: %s\n", argv[2]);
     return 1;
   }
+  ope_add_comment(enc, "ARTIST", "Someone");
+  ope_add_comment(enc, "TITLE", "Some track");
   ope_close_and_free(enc);
   return 0;
 }

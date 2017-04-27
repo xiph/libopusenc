@@ -40,7 +40,12 @@
 #include "opusenc.h"
 #include "opus_header.h"
 
-#define BUFFER_SAMPLES 96000
+/* Allow up to 2 seconds for delayed decision. */
+#define MAX_LOOKAHEAD 96000
+/* We can't have a circular buffer (because of delayed decision), so let's not copy too often. */
+#define BUFFER_EXTRA 24000
+
+#define BUFFER_SAMPLES (MAX_LOOKAHEAD + BUFFER_EXTRA)
 
 static int oe_write_page(ogg_page *page, OpusEncCallbacks *cb, void *user_data)
 {
@@ -59,6 +64,8 @@ struct StdioObject {
 struct OggOpusEnc {
   OpusMSEncoder *st;
   float *buffer;
+  int buffer_start;
+  int buffer_end;
   OpusEncCallbacks callbacks;
   void *user_data;
   int os_allocated;
@@ -155,7 +162,6 @@ OggOpusEnc *ope_create_callbacks(const OpusEncCallbacks *callbacks, void *user_d
     char encoder_string[1024];
     snprintf(encoder_string, sizeof(encoder_string), "%s version %s", PACKAGE_NAME, PACKAGE_VERSION);
     comment_add(&enc->comment, &enc->comment_length, "ENCODER", encoder_string);
-    comment_pad(&enc->comment, &enc->comment_length, 512);
   }
   if (enc->comment == NULL) goto fail;
   if ( (enc->buffer = malloc(sizeof(*enc->buffer)*BUFFER_SAMPLES*channels)) == NULL) goto fail;
@@ -188,6 +194,7 @@ static void init_stream(OggOpusEnc *enc) {
   }
   /* FIXME: Compute preskip. */
   enc->header.preskip = 0;
+  comment_pad(&enc->comment, &enc->comment_length, 512);
 
   /*Write header*/
   {
@@ -270,9 +277,7 @@ int ope_continue_new_callbacks(OggOpusEnc *enc, void *user_data) {
 
 /* Add a comment to the file (can only be called before encoding samples). */
 int ope_add_comment(OggOpusEnc *enc, char *tag, char *val) {
-  (void)enc;
-  (void)tag;
-  (void)val;
+  if (comment_add(&enc->comment, &enc->comment_length, tag, val)) return OPE_INTERNAL_ERROR;
   return OPE_OK;
 }
 
@@ -280,7 +285,7 @@ int ope_add_comment(OggOpusEnc *enc, char *tag, char *val) {
 int ope_set_vendor_string(OggOpusEnc *enc, char *vendor) {
   (void)enc;
   (void)vendor;
-  return OPE_OK;
+  return OPE_UNIMPLEMENTED;
 }
 
 /* Goes straight to the libopus ctl() functions. */

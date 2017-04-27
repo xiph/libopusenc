@@ -38,13 +38,17 @@ extern "C" {
 #define OPE_CANNOT_OPEN -10
 #define OPE_UNIMPLEMENTED -11
 #define OPE_BAD_ARG -12
+#define OPE_INTERNAL_ERROR -13
 
 typedef int (*ope_write_func)(void *user_data, const unsigned char *ptr, int len);
 
 typedef int (*ope_close_func)(void *user_data);
 
+/** Callback functions for accessing the stream. */
 typedef struct {
+  /** Callback for writing to the stream. */
   ope_write_func write;
+  /** Callback for closing the stream. */
   ope_close_func close;
 } OpusEncCallbacks;
 

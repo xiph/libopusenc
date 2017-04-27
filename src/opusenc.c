@@ -68,6 +68,7 @@ struct OggOpusEnc {
   OpusHeader header;
   char *comment;
   int comment_length;
+  int stream_is_init;
 };
 
 static int oe_flush_page(OggOpusEnc *enc) {
@@ -147,11 +148,12 @@ OggOpusEnc *ope_create_callbacks(const OpusEncCallbacks *callbacks, void *user_d
     goto fail;
   }
   enc->os_allocated = 0;
+  enc->stream_is_init = 0;
   enc->comment = NULL;
   comment_init(&enc->comment, &enc->comment_length, opus_get_version_string());
   {
     char encoder_string[1024];
-    snprintf(encoder_string, sizeof(encoder_string), "libopusenc version %s %s",PACKAGE_NAME,PACKAGE_VERSION);
+    snprintf(encoder_string, sizeof(encoder_string), "%s version %s", PACKAGE_NAME, PACKAGE_VERSION);
     comment_add(&enc->comment, &enc->comment_length, "ENCODER", encoder_string);
     comment_pad(&enc->comment, &enc->comment_length, 512);
   }
@@ -175,6 +177,7 @@ fail:
 static void init_stream(OggOpusEnc *enc) {
   time_t start_time;
   int serialno;
+  assert(!enc->stream_is_init);
   start_time = time(NULL);
   srand(((getpid()&65535)<<15)^start_time);
 
@@ -213,7 +216,7 @@ static void init_stream(OggOpusEnc *enc) {
     ogg_stream_packetin(&enc->os, &op);
     oe_flush_page(enc);
   }
-
+  enc->stream_is_init = 1;
 }
 
 /* Add/encode any number of float samples to the file. */
@@ -233,7 +236,7 @@ int ope_write(OggOpusEnc *enc, opus_int16 *pcm, int samples_per_channel) {
 }
 
 static void finalize_stream(OggOpusEnc *enc) {
-  (void)enc;
+  if (!enc->stream_is_init) init_stream(enc);
 }
 
 /* Close/finalize the stream. */

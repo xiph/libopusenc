@@ -19,5 +19,6 @@ int main(int argc, char **argv) {
     printf("cannout open output file: %s\n", argv[2]);
     return 1;
   }
+  ope_close_and_free(enc);
   return 0;
 }

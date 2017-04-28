@@ -238,7 +238,15 @@ static void init_stream(OggOpusEnc *enc) {
 }
 
 static void encode_buffer(OggOpusEnc *enc) {
-  
+  while (enc->buffer_end-enc->buffer_start > enc->frame_size + enc->decision_delay) {
+    unsigned char packet[MAX_PACKET_SIZE];
+    opus_multistream_encode_float(enc->st, &enc->buffer[enc->channels*enc->buffer_start],
+        enc->buffer_end-enc->buffer_start, packet, MAX_PACKET_SIZE);
+    /* FIXME: Write the packet to the stream. */
+    enc->buffer_start += frame_size;
+  }
+  /* This function must never leave the buffer full. */
+  assert(enc->buffer_end < BUFFER_SAMPLES);
 }
 
 /* Add/encode any number of float samples to the file. */

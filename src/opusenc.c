@@ -49,6 +49,10 @@
 
 #define BUFFER_SAMPLES (MAX_LOOKAHEAD + BUFFER_EXTRA)
 
+#define MIN(a,b) ((a) < (b) ? (a) : (b))
+#define MAX(a,b) ((a) > (b) ? (a) : (b))
+
+
 static int oe_write_page(ogg_page *page, OpusEncCallbacks *cb, void *user_data)
 {
    int err;
@@ -65,6 +69,7 @@ struct StdioObject {
 
 struct OggOpusEnc {
   OpusMSEncoder *st;
+  int channels;
   float *buffer;
   int buffer_start;
   int buffer_end;
@@ -143,7 +148,13 @@ OggOpusEnc *ope_create_callbacks(const OpusEncCallbacks *callbacks, void *user_d
     if (error) *error = OPE_BAD_ARG;
     return NULL;
   }
+  /* FIXME: Add resampling support. */
+  if (rate != 48000) {
+    if (error) *error = OPE_UNIMPLEMENTED;
+    return NULL;
+  }
   if ( (enc = malloc(sizeof(*enc))) == NULL) goto fail;
+  enc->channels = channels;
   enc->header.channels=channels;
   enc->header.channel_mapping=family;
   enc->header.input_sample_rate=rate;
@@ -226,19 +237,47 @@ static void init_stream(OggOpusEnc *enc) {
   enc->stream_is_init = 1;
 }
 
+static void encode_buffer(OggOpusEnc *enc) {
+  
+}
+
 /* Add/encode any number of float samples to the file. */
 int ope_write_float(OggOpusEnc *enc, float *pcm, int samples_per_channel) {
-  (void)enc;
-  (void)pcm;
-  (void)samples_per_channel;
+  int channels = enc->channels;
+  /* FIXME: Add resampling support. */
+  do {
+    int i;
+    int curr;
+    int space_left = BUFFER_SAMPLES-enc->buffer_end;
+    curr = MIN(samples_per_channel, space_left);
+    for (i=0;i<channels*curr;i++) {
+      enc->buffer[channels*enc->buffer_end+i] = pcm[i];
+    }
+    enc->buffer_end += curr;
+    pcm += curr;
+    samples_per_channel -= curr;
+    encode_buffer(enc);
+  } while (samples_per_channel > 0);
   return 0;
 }
 
 /* Add/encode any number of int16 samples to the file. */
 int ope_write(OggOpusEnc *enc, opus_int16 *pcm, int samples_per_channel) {
-  (void)enc;
-  (void)pcm;
-  (void)samples_per_channel;
+  int channels = enc->channels;
+  /* FIXME: Add resampling support. */
+  do {
+    int i;
+    int curr;
+    int space_left = BUFFER_SAMPLES-enc->buffer_end;
+    curr = MIN(samples_per_channel, space_left);
+    for (i=0;i<channels*curr;i++) {
+      enc->buffer[channels*enc->buffer_end+i] = (1.f/32768)*pcm[i];
+    }
+    enc->buffer_end += curr;
+    pcm += curr;
+    samples_per_channel -= curr;
+    encode_buffer(enc);
+  } while (samples_per_channel > 0);
   return 0;
 }
 

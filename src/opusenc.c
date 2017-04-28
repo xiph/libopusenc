@@ -52,6 +52,7 @@
 #define MIN(a,b) ((a) < (b) ? (a) : (b))
 #define MAX(a,b) ((a) > (b) ? (a) : (b))
 
+#define MAX_PACKET_SIZE (1276*8)
 
 static int oe_write_page(ogg_page *page, OpusEncCallbacks *cb, void *user_data)
 {
@@ -73,6 +74,8 @@ struct OggOpusEnc {
   float *buffer;
   int buffer_start;
   int buffer_end;
+  int frame_size;
+  int decision_delay;
   OpusEncCallbacks callbacks;
   void *user_data;
   OpusHeader header;
@@ -155,6 +158,8 @@ OggOpusEnc *ope_create_callbacks(const OpusEncCallbacks *callbacks, void *user_d
   }
   if ( (enc = malloc(sizeof(*enc))) == NULL) goto fail;
   enc->channels = channels;
+  enc->frame_size = 960;
+  enc->decision_delay = 96000;
   enc->header.channels=channels;
   enc->header.channel_mapping=family;
   enc->header.input_sample_rate=rate;
@@ -239,11 +244,14 @@ static void init_stream(OggOpusEnc *enc) {
 
 static void encode_buffer(OggOpusEnc *enc) {
   while (enc->buffer_end-enc->buffer_start > enc->frame_size + enc->decision_delay) {
+    int nbBytes;
     unsigned char packet[MAX_PACKET_SIZE];
-    opus_multistream_encode_float(enc->st, &enc->buffer[enc->channels*enc->buffer_start],
+    nbBytes = opus_multistream_encode_float(enc->st, &enc->buffer[enc->channels*enc->buffer_start],
         enc->buffer_end-enc->buffer_start, packet, MAX_PACKET_SIZE);
+    /* FIXME: How do we handle failure here. */
+    assert(nbBytes < 0);
     /* FIXME: Write the packet to the stream. */
-    enc->buffer_start += frame_size;
+    enc->buffer_start += enc->frame_size;
   }
   /* This function must never leave the buffer full. */
   assert(enc->buffer_end < BUFFER_SAMPLES);

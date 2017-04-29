@@ -35,6 +35,7 @@
 #include <unistd.h>
 #include <stdlib.h>
 #include <stdio.h>
+#include <string.h>
 #include <assert.h>
 #include <opus_multistream.h>
 #include "opusenc.h"
@@ -76,6 +77,7 @@ struct OggOpusEnc {
   int buffer_end;
   int frame_size;
   int decision_delay;
+  ogg_int64_t curr_granule;
   OpusEncCallbacks callbacks;
   void *user_data;
   OpusHeader header;
@@ -84,6 +86,7 @@ struct OggOpusEnc {
   int os_allocated;
   ogg_stream_state os;
   int stream_is_init;
+  int packetno;
 };
 
 static int oe_flush_page(OggOpusEnc *enc) {
@@ -173,6 +176,13 @@ OggOpusEnc *ope_create_callbacks(const OpusEncCallbacks *callbacks, void *user_d
   enc->os_allocated = 0;
   enc->stream_is_init = 0;
   enc->comment = NULL;
+  {
+    opus_int32 tmp;
+    int ret;
+    ret = opus_multistream_encoder_ctl(enc->st, OPUS_GET_LOOKAHEAD(&tmp));
+    if (ret == OPUS_OK) enc->curr_granule = -tmp;
+    else enc->curr_granule = 0;
+  }
   comment_init(&enc->comment, &enc->comment_length, opus_get_version_string());
   {
     char encoder_string[1024];
@@ -240,18 +250,35 @@ static void init_stream(OggOpusEnc *enc) {
     oe_flush_page(enc);
   }
   enc->stream_is_init = 1;
+  enc->packetno = 2;
 }
 
 static void encode_buffer(OggOpusEnc *enc) {
   while (enc->buffer_end-enc->buffer_start > enc->frame_size + enc->decision_delay) {
+    ogg_packet op;
     int nbBytes;
     unsigned char packet[MAX_PACKET_SIZE];
     nbBytes = opus_multistream_encode_float(enc->st, &enc->buffer[enc->channels*enc->buffer_start],
         enc->buffer_end-enc->buffer_start, packet, MAX_PACKET_SIZE);
     /* FIXME: How do we handle failure here. */
     assert(nbBytes < 0);
-    /* FIXME: Write the packet to the stream. */
+    enc->curr_granule += enc->frame_size;
+    op.packet=packet;
+    op.bytes=nbBytes;
+    op.b_o_s=0;
+    op.e_o_s=0;
+    op.packetno=enc->packetno++;
+    op.granulepos=enc->curr_granule;
+    ogg_stream_packetin(&enc->os, &op);
+
+    /* FIXME: flush the stream and write. */
     enc->buffer_start += enc->frame_size;
+  }
+  /* If we've reached the end of the buffer, move everything back to the front. */
+  if (enc->buffer_end == BUFFER_SAMPLES) {
+    memmove(enc->buffer, &enc->buffer[enc->channels*enc->buffer_start], enc->channels*(enc->buffer_end-enc->buffer_start));
+    enc->buffer_end -= enc->buffer_start;
+    enc->buffer_start = 0;
   }
   /* This function must never leave the buffer full. */
   assert(enc->buffer_end < BUFFER_SAMPLES);

@@ -305,7 +305,7 @@ int ope_write_float(OggOpusEnc *enc, float *pcm, int samples_per_channel) {
       enc->buffer[channels*enc->buffer_end+i] = pcm[i];
     }
     enc->buffer_end += curr;
-    pcm += curr;
+    pcm += curr*channels;
     samples_per_channel -= curr;
     encode_buffer(enc);
   } while (samples_per_channel > 0);
@@ -326,7 +326,7 @@ int ope_write(OggOpusEnc *enc, opus_int16 *pcm, int samples_per_channel) {
       enc->buffer[channels*enc->buffer_end+i] = (1.f/32768)*pcm[i];
     }
     enc->buffer_end += curr;
-    pcm += curr;
+    pcm += curr*channels;
     samples_per_channel -= curr;
     encode_buffer(enc);
   } while (samples_per_channel > 0);

@@ -78,6 +78,7 @@ struct OggOpusEnc {
   int frame_size;
   int decision_delay;
   ogg_int64_t curr_granule;
+  ogg_int64_t end_granule;
   OpusEncCallbacks callbacks;
   void *user_data;
   OpusHeader header;
@@ -184,6 +185,7 @@ OggOpusEnc *ope_create_callbacks(const OpusEncCallbacks *callbacks, void *user_d
     if (ret == OPUS_OK) enc->curr_granule = -tmp;
     else enc->curr_granule = 0;
   }
+  enc->end_granule = 0;
   comment_init(&enc->comment, &enc->comment_length, opus_get_version_string());
   {
     char encoder_string[1024];
@@ -256,6 +258,12 @@ static void init_stream(OggOpusEnc *enc) {
   enc->packetno = 2;
 }
 
+static void shift_buffer(OggOpusEnc *enc) {
+    memmove(enc->buffer, &enc->buffer[enc->channels*enc->buffer_start], enc->channels*(enc->buffer_end-enc->buffer_start)*sizeof(*enc->buffer));
+    enc->buffer_end -= enc->buffer_start;
+    enc->buffer_start = 0;
+}
+
 static void encode_buffer(OggOpusEnc *enc) {
   while (enc->buffer_end-enc->buffer_start > enc->frame_size + enc->decision_delay) {
     ogg_packet op;
@@ -273,6 +281,16 @@ static void encode_buffer(OggOpusEnc *enc) {
     op.e_o_s=0;
     op.packetno=enc->packetno++;
     op.granulepos=enc->curr_granule;
+    if (enc->curr_granule >= enc->end_granule) {
+      op.granulepos=enc->end_granule;
+      ogg_stream_packetin(&enc->os, &op);
+      while (ogg_stream_flush_fill(&enc->os, &og, 255*255)) {
+        int ret = oe_write_page(&og, &enc->callbacks, enc->user_data);
+        /* FIXME: what do we do if this fails? */
+        assert(ret != -1);
+        return;
+      }
+    }
     ogg_stream_packetin(&enc->os, &op);
     /* FIXME: Use flush to enforce latency constraint. */
     while (ogg_stream_pageout_fill(&enc->os, &og, 255*255)) {
@@ -284,9 +302,7 @@ static void encode_buffer(OggOpusEnc *enc) {
   }
   /* If we've reached the end of the buffer, move everything back to the front. */
   if (enc->buffer_end == BUFFER_SAMPLES) {
-    memmove(enc->buffer, &enc->buffer[enc->channels*enc->buffer_start], enc->channels*(enc->buffer_end-enc->buffer_start)*sizeof(*enc->buffer));
-    enc->buffer_end -= enc->buffer_start;
-    enc->buffer_start = 0;
+    shift_buffer(enc);
   }
   /* This function must never leave the buffer full. */
   assert(enc->buffer_end < BUFFER_SAMPLES);
@@ -296,6 +312,7 @@ static void encode_buffer(OggOpusEnc *enc) {
 int ope_write_float(OggOpusEnc *enc, const float *pcm, int samples_per_channel) {
   int channels = enc->channels;
   if (!enc->stream_is_init) init_stream(enc);
+  enc->end_granule += samples_per_channel;
   /* FIXME: Add resampling support. */
   do {
     int i;
@@ -317,6 +334,7 @@ int ope_write_float(OggOpusEnc *enc, const float *pcm, int samples_per_channel) 
 int ope_write(OggOpusEnc *enc, const opus_int16 *pcm, int samples_per_channel) {
   int channels = enc->channels;
   if (!enc->stream_is_init) init_stream(enc);
+  enc->end_granule += samples_per_channel;
   /* FIXME: Add resampling support. */
   do {
     int i;
@@ -335,7 +353,16 @@ int ope_write(OggOpusEnc *enc, const opus_int16 *pcm, int samples_per_channel) {
 }
 
 static void finalize_stream(OggOpusEnc *enc) {
+  /* FIXME: Use a better value. */
+  int pad_samples = 3000;
   if (!enc->stream_is_init) init_stream(enc);
+  shift_buffer(enc);
+  /* FIXME: Do LPC extension instead. */
+  memset(&enc->buffer[enc->channels*enc->buffer_end], 0, pad_samples*enc->channels);
+  enc->decision_delay = 0;
+  enc->buffer_end += pad_samples;
+  assert(enc->buffer_end <= BUFFER_SAMPLES);
+  encode_buffer(enc);
 }
 
 /* Close/finalize the stream. */

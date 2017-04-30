@@ -274,7 +274,7 @@ static void encode_buffer(OggOpusEnc *enc) {
     op.granulepos=enc->curr_granule;
     ogg_stream_packetin(&enc->os, &op);
     /* FIXME: Use flush to enforce latency constraint. */
-    while (ogg_stream_pageout_fill(&enc->os, &og,255*255)) {
+    while (ogg_stream_pageout_fill(&enc->os, &og, 255*255)) {
       int ret = oe_write_page(&og, &enc->callbacks, enc->user_data);
       /* FIXME: what do we do if this fails? */
       assert(ret != -1);
@@ -294,6 +294,7 @@ static void encode_buffer(OggOpusEnc *enc) {
 /* Add/encode any number of float samples to the file. */
 int ope_write_float(OggOpusEnc *enc, float *pcm, int samples_per_channel) {
   int channels = enc->channels;
+  if (!enc->stream_is_init) init_stream(enc);
   /* FIXME: Add resampling support. */
   do {
     int i;
@@ -314,6 +315,7 @@ int ope_write_float(OggOpusEnc *enc, float *pcm, int samples_per_channel) {
 /* Add/encode any number of int16 samples to the file. */
 int ope_write(OggOpusEnc *enc, opus_int16 *pcm, int samples_per_channel) {
   int channels = enc->channels;
+  if (!enc->stream_is_init) init_stream(enc);
   /* FIXME: Add resampling support. */
   do {
     int i;

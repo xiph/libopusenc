@@ -192,6 +192,7 @@ OggOpusEnc *ope_create_callbacks(const OpusEncCallbacks *callbacks, void *user_d
   }
   if (enc->comment == NULL) goto fail;
   if ( (enc->buffer = malloc(sizeof(*enc->buffer)*BUFFER_SAMPLES*channels)) == NULL) goto fail;
+  enc->buffer_start = enc->buffer_end = 0;
   enc->st = st;
   enc->callbacks = *callbacks;
   enc->user_data = user_data;

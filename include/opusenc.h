@@ -34,6 +34,20 @@ extern "C" {
 
 #include "opus.h"
 
+#ifndef OPE_EXPORT
+# if defined(WIN32)
+#  if defined(OPE_BUILD) && defined(DLL_EXPORT)
+#   define OPE_EXPORT __declspec(dllexport)
+#  else
+#   define OPE_EXPORT
+#  endif
+# elif defined(__GNUC__) && defined(OPE_BUILD)
+#  define OPE_EXPORT __attribute__ ((visibility ("default")))
+# else
+#  define OPE_EXPORT
+# endif
+#endif
+
 #define OPE_OK 0
 #define OPE_CANNOT_OPEN -10
 #define OPE_UNIMPLEMENTED -11
@@ -56,41 +70,41 @@ typedef struct {
 typedef struct OggOpusEnc OggOpusEnc;
 
 /** Create a new OggOpus file. */
-OggOpusEnc *ope_create_file(const char *path, int rate, int channels, int family, int *error);
+OPE_EXPORT OggOpusEnc *ope_create_file(const char *path, int rate, int channels, int family, int *error);
 
 /** Create a new OggOpus file (callback-based). */
-OggOpusEnc *ope_create_callbacks(const OpusEncCallbacks *callbacks, void *user_data,
+OPE_EXPORT OggOpusEnc *ope_create_callbacks(const OpusEncCallbacks *callbacks, void *user_data,
     int rate, int channels, int family, int *error);
 
 /** Add/encode any number of float samples to the file. */
-int ope_write_float(OggOpusEnc *enc, const float *pcm, int samples_per_channel);
+OPE_EXPORT int ope_write_float(OggOpusEnc *enc, const float *pcm, int samples_per_channel);
 
 /** Add/encode any number of int16 samples to the file. */
-int ope_write(OggOpusEnc *enc, const opus_int16 *pcm, int samples_per_channel);
+OPE_EXPORT int ope_write(OggOpusEnc *enc, const opus_int16 *pcm, int samples_per_channel);
 
 /** Close/finalize the stream. */
-int ope_close_and_free(OggOpusEnc *enc);
+OPE_EXPORT int ope_close_and_free(OggOpusEnc *enc);
 
 /** Ends the stream and create a new stream within the same file. */
-int ope_chain_current(OggOpusEnc *enc);
+OPE_EXPORT int ope_chain_current(OggOpusEnc *enc);
 
 /** Ends the stream and create a new file. */
-int ope_continue_new_file(OggOpusEnc *enc, const char *path);
+OPE_EXPORT int ope_continue_new_file(OggOpusEnc *enc, const char *path);
 
 /** Ends the stream and create a new file (callback-based). */
-int ope_continue_new_callbacks(OggOpusEnc *enc, void *user_data);
+OPE_EXPORT int ope_continue_new_callbacks(OggOpusEnc *enc, void *user_data);
 
 /** Add a comment to the file (can only be called before encoding samples). */
-int ope_add_comment(OggOpusEnc *enc, const char *tag, const char *val);
+OPE_EXPORT int ope_add_comment(OggOpusEnc *enc, const char *tag, const char *val);
 
 /** Sets the Opus comment vendor string (optional, defaults to library info). */
-int ope_set_vendor_string(OggOpusEnc *enc, const char *vendor);
+OPE_EXPORT int ope_set_vendor_string(OggOpusEnc *enc, const char *vendor);
 
 /** Goes straight to the libopus ctl() functions. */
-int ope_encoder_ctl(OggOpusEnc *enc, int request, ...);
+OPE_EXPORT int ope_encoder_ctl(OggOpusEnc *enc, int request, ...);
 
 /** ctl()-type call for the OggOpus layer. */
-int ope_set_params(OggOpusEnc *enc, int request, ...);
+OPE_EXPORT int ope_set_params(OggOpusEnc *enc, int request, ...);
 
 # if defined(__cplusplus)
 }

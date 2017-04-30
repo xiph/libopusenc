@@ -257,6 +257,7 @@ static void init_stream(OggOpusEnc *enc) {
 static void encode_buffer(OggOpusEnc *enc) {
   while (enc->buffer_end-enc->buffer_start > enc->frame_size + enc->decision_delay) {
     ogg_packet op;
+    ogg_page og;
     int nbBytes;
     unsigned char packet[MAX_PACKET_SIZE];
     nbBytes = opus_multistream_encode_float(enc->st, &enc->buffer[enc->channels*enc->buffer_start],
@@ -271,8 +272,12 @@ static void encode_buffer(OggOpusEnc *enc) {
     op.packetno=enc->packetno++;
     op.granulepos=enc->curr_granule;
     ogg_stream_packetin(&enc->os, &op);
-
-    /* FIXME: flush the stream and write. */
+    /* FIXME: Use flush to enforce latency constraint. */
+    while (ogg_stream_pageout_fill(&enc->os, &og,255*255)) {
+      int ret = oe_write_page(&og, &enc->callbacks, enc->user_data);
+      /* FIXME: what do we do if this fails? */
+      assert(ret != -1);
+    }
     enc->buffer_start += enc->frame_size;
   }
   /* If we've reached the end of the buffer, move everything back to the front. */

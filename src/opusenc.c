@@ -173,6 +173,7 @@ OggOpusEnc *ope_create_callbacks(const OpusEncCallbacks *callbacks, void *user_d
   if (! (ret == OPUS_OK && st != NULL) ) {
     goto fail;
   }
+  opus_multistream_encoder_ctl(st, OPUS_SET_EXPERT_FRAME_DURATION(OPUS_FRAMESIZE_20_MS));
   enc->os_allocated = 0;
   enc->stream_is_init = 0;
   enc->comment = NULL;
@@ -301,7 +302,7 @@ int ope_write_float(OggOpusEnc *enc, float *pcm, int samples_per_channel) {
     samples_per_channel -= curr;
     encode_buffer(enc);
   } while (samples_per_channel > 0);
-  return 0;
+  return OPE_OK;
 }
 
 /* Add/encode any number of int16 samples to the file. */
@@ -321,7 +322,7 @@ int ope_write(OggOpusEnc *enc, opus_int16 *pcm, int samples_per_channel) {
     samples_per_channel -= curr;
     encode_buffer(enc);
   } while (samples_per_channel > 0);
-  return 0;
+  return OPE_OK;
 }
 
 static void finalize_stream(OggOpusEnc *enc) {
@@ -340,21 +341,21 @@ int ope_close_and_free(OggOpusEnc *enc) {
 /* Ends the stream and create a new stream within the same file. */
 int ope_chain_current(OggOpusEnc *enc) {
   (void)enc;
-  return 0;
+  return OPE_UNIMPLEMENTED;
 }
 
 /* Ends the stream and create a new file. */
 int ope_continue_new_file(OggOpusEnc *enc, const char *path) {
   (void)enc;
   (void)path;
-  return 0;
+  return OPE_UNIMPLEMENTED;
 }
 
 /* Ends the stream and create a new file (callback-based). */
 int ope_continue_new_callbacks(OggOpusEnc *enc, void *user_data) {
   (void)enc;
   (void)user_data;
-  return 0;
+  return OPE_UNIMPLEMENTED;
 }
 
 /* Add a comment to the file (can only be called before encoding samples). */
@@ -374,12 +375,12 @@ int ope_set_vendor_string(OggOpusEnc *enc, char *vendor) {
 int ope_encoder_ctl(OggOpusEnc *enc, int request, ...) {
   (void)enc;
   (void)request;
-  return 0;
+  return OPE_UNIMPLEMENTED;
 }
 
 /* ctl()-type call for the OggOpus layer. */
 int ope_set_params(OggOpusEnc *enc, int request, ...) {
   (void)enc;
   (void)request;
-  return 0;
+  return OPE_UNIMPLEMENTED;
 }

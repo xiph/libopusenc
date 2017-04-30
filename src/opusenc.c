@@ -283,7 +283,7 @@ static void encode_buffer(OggOpusEnc *enc) {
   }
   /* If we've reached the end of the buffer, move everything back to the front. */
   if (enc->buffer_end == BUFFER_SAMPLES) {
-    memmove(enc->buffer, &enc->buffer[enc->channels*enc->buffer_start], enc->channels*(enc->buffer_end-enc->buffer_start));
+    memmove(enc->buffer, &enc->buffer[enc->channels*enc->buffer_start], enc->channels*(enc->buffer_end-enc->buffer_start)*sizeof(*enc->buffer));
     enc->buffer_end -= enc->buffer_start;
     enc->buffer_start = 0;
   }

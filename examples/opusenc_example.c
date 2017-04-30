@@ -1,6 +1,8 @@
 #include <stdio.h>
 #include "opusenc.h"
 
+#define READ_SIZE 256
+
 int main(int argc, char **argv) {
   FILE *fin;
   OggOpusEnc *enc;
@@ -21,6 +23,13 @@ int main(int argc, char **argv) {
   }
   ope_add_comment(enc, "ARTIST", "Someone");
   ope_add_comment(enc, "TITLE", "Some track");
+  while (1) {
+    short buf[2*READ_SIZE];
+    int ret = fread(buf, 2*sizeof(short), READ_SIZE, fin);
+    if (ret > 0) {
+      ope_write(enc, buf, ret);
+    } else break;
+  }
   ope_close_and_free(enc);
   return 0;
 }

@@ -180,7 +180,7 @@ OggOpusEnc *ope_create_callbacks(const OpusEncCallbacks *callbacks, void *user_d
   {
     opus_int32 tmp;
     int ret;
-    ret = opus_multistream_encoder_ctl(enc->st, OPUS_GET_LOOKAHEAD(&tmp));
+    ret = opus_multistream_encoder_ctl(st, OPUS_GET_LOOKAHEAD(&tmp));
     if (ret == OPUS_OK) enc->curr_granule = -tmp;
     else enc->curr_granule = 0;
   }
@@ -195,6 +195,7 @@ OggOpusEnc *ope_create_callbacks(const OpusEncCallbacks *callbacks, void *user_d
   enc->st = st;
   enc->callbacks = *callbacks;
   enc->user_data = user_data;
+  if (error) *error = OPUS_OK;
   return enc;
 fail:
   if (enc) {
@@ -263,7 +264,7 @@ static void encode_buffer(OggOpusEnc *enc) {
     nbBytes = opus_multistream_encode_float(enc->st, &enc->buffer[enc->channels*enc->buffer_start],
         enc->buffer_end-enc->buffer_start, packet, MAX_PACKET_SIZE);
     /* FIXME: How do we handle failure here. */
-    assert(nbBytes < 0);
+    assert(nbBytes > 0);
     enc->curr_granule += enc->frame_size;
     op.packet=packet;
     op.bytes=nbBytes;

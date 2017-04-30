@@ -50,7 +50,7 @@ extern const int wav_permute_matrix[8][8];
 
 void comment_init(char **comments, int* length, const char *vendor_string);
 
-int comment_add(char **comments, int* length, char *tag, char *val);
+int comment_add(char **comments, int* length, const char *tag, const char *val);
 
 void comment_pad(char **comments, int* length, int amount);
 

@@ -292,7 +292,7 @@ static void encode_buffer(OggOpusEnc *enc) {
 }
 
 /* Add/encode any number of float samples to the file. */
-int ope_write_float(OggOpusEnc *enc, float *pcm, int samples_per_channel) {
+int ope_write_float(OggOpusEnc *enc, const float *pcm, int samples_per_channel) {
   int channels = enc->channels;
   if (!enc->stream_is_init) init_stream(enc);
   /* FIXME: Add resampling support. */
@@ -313,7 +313,7 @@ int ope_write_float(OggOpusEnc *enc, float *pcm, int samples_per_channel) {
 }
 
 /* Add/encode any number of int16 samples to the file. */
-int ope_write(OggOpusEnc *enc, opus_int16 *pcm, int samples_per_channel) {
+int ope_write(OggOpusEnc *enc, const opus_int16 *pcm, int samples_per_channel) {
   int channels = enc->channels;
   if (!enc->stream_is_init) init_stream(enc);
   /* FIXME: Add resampling support. */
@@ -367,13 +367,13 @@ int ope_continue_new_callbacks(OggOpusEnc *enc, void *user_data) {
 }
 
 /* Add a comment to the file (can only be called before encoding samples). */
-int ope_add_comment(OggOpusEnc *enc, char *tag, char *val) {
+int ope_add_comment(OggOpusEnc *enc, const char *tag, const char *val) {
   if (comment_add(&enc->comment, &enc->comment_length, tag, val)) return OPE_INTERNAL_ERROR;
   return OPE_OK;
 }
 
 /* Sets the Opus comment vendor string (optional, defaults to library info). */
-int ope_set_vendor_string(OggOpusEnc *enc, char *vendor) {
+int ope_set_vendor_string(OggOpusEnc *enc, const char *vendor) {
   (void)enc;
   (void)vendor;
   return OPE_UNIMPLEMENTED;

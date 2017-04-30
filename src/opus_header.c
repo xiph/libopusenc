@@ -200,7 +200,7 @@ void comment_init(char **comments, int* length, const char *vendor_string)
   *comments=p;
 }
 
-int comment_add(char **comments, int* length, char *tag, char *val)
+int comment_add(char **comments, int* length, const char *tag, const char *val)
 {
   char* p=*comments;
   int vendor_length=readint(p, 8);

@@ -63,10 +63,10 @@ OggOpusEnc *ope_create_callbacks(const OpusEncCallbacks *callbacks, void *user_d
     int rate, int channels, int family, int *error);
 
 /** Add/encode any number of float samples to the file. */
-int ope_write_float(OggOpusEnc *enc, float *pcm, int samples_per_channel);
+int ope_write_float(OggOpusEnc *enc, const float *pcm, int samples_per_channel);
 
 /** Add/encode any number of int16 samples to the file. */
-int ope_write(OggOpusEnc *enc, opus_int16 *pcm, int samples_per_channel);
+int ope_write(OggOpusEnc *enc, const opus_int16 *pcm, int samples_per_channel);
 
 /** Close/finalize the stream. */
 int ope_close_and_free(OggOpusEnc *enc);
@@ -81,10 +81,10 @@ int ope_continue_new_file(OggOpusEnc *enc, const char *path);
 int ope_continue_new_callbacks(OggOpusEnc *enc, void *user_data);
 
 /** Add a comment to the file (can only be called before encoding samples). */
-int ope_add_comment(OggOpusEnc *enc, char *tag, char *val);
+int ope_add_comment(OggOpusEnc *enc, const char *tag, const char *val);
 
 /** Sets the Opus comment vendor string (optional, defaults to library info). */
-int ope_set_vendor_string(OggOpusEnc *enc, char *vendor);
+int ope_set_vendor_string(OggOpusEnc *enc, const char *vendor);
 
 /** Goes straight to the libopus ctl() functions. */
 int ope_encoder_ctl(OggOpusEnc *enc, int request, ...);

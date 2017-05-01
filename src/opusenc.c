@@ -83,8 +83,10 @@ struct OggOpusEnc {
   SpeexResamplerState *re;
   int frame_size;
   int decision_delay;
+  int max_ogg_delay;
   ogg_int64_t curr_granule;
   ogg_int64_t end_granule;
+  ogg_int64_t last_page_granule;
   OpusEncCallbacks callbacks;
   void *user_data;
   OpusHeader header;
@@ -171,6 +173,7 @@ OggOpusEnc *ope_create_callbacks(const OpusEncCallbacks *callbacks, void *user_d
   enc->channels = channels;
   enc->frame_size = 960;
   enc->decision_delay = 96000;
+  enc->max_ogg_delay = 48000;
   enc->header.channels=channels;
   enc->header.channel_mapping=family;
   enc->header.input_sample_rate=rate;
@@ -200,6 +203,7 @@ OggOpusEnc *ope_create_callbacks(const OpusEncCallbacks *callbacks, void *user_d
   }
   enc->curr_granule = 0;
   enc->end_granule = 0;
+  enc->last_page_granule = 0;
   comment_init(&enc->comment, &enc->comment_length, opus_get_version_string());
   {
     char encoder_string[1024];
@@ -280,6 +284,7 @@ static void encode_buffer(OggOpusEnc *enc) {
   /* Round up when converting the granule pos because the decoder will round down. */
   ogg_int64_t end_granule48k = (enc->end_granule*48000 + enc->rate - 1)/enc->rate + enc->header.preskip;
   while (enc->buffer_end-enc->buffer_start > enc->frame_size + enc->decision_delay) {
+    int flush_needed;
     ogg_packet op;
     ogg_page og;
     int nbBytes;
@@ -292,27 +297,29 @@ static void encode_buffer(OggOpusEnc *enc) {
     op.packet=packet;
     op.bytes=nbBytes;
     op.b_o_s=0;
-    op.e_o_s=0;
     op.packetno=enc->packetno++;
     op.granulepos=enc->curr_granule;
-    if (enc->curr_granule >= end_granule48k) {
-      op.granulepos=end_granule48k;
-      op.e_o_s=1;
-      ogg_stream_packetin(&enc->os, &op);
+    op.e_o_s=enc->curr_granule >= end_granule48k;
+    if (op.e_o_s) op.granulepos=end_granule48k;
+    ogg_stream_packetin(&enc->os, &op);
+    /* FIXME: Also flush on too many segments. */
+    flush_needed = op.e_o_s || enc->curr_granule - enc->last_page_granule > enc->max_ogg_delay;
+    if (flush_needed) {
       while (ogg_stream_flush_fill(&enc->os, &og, 255*255)) {
+        if (ogg_page_packets(&og) != 0) enc->last_page_granule = ogg_page_granulepos(&og);
         int ret = oe_write_page(&og, &enc->callbacks, enc->user_data);
         /* FIXME: what do we do if this fails? */
         assert(ret != -1);
-        return;
+      }
+    } else {
+      while (ogg_stream_pageout_fill(&enc->os, &og, 255*255)) {
+        if (ogg_page_packets(&og) != 0) enc->last_page_granule = ogg_page_granulepos(&og);
+        int ret = oe_write_page(&og, &enc->callbacks, enc->user_data);
+        /* FIXME: what do we do if this fails? */
+        assert(ret != -1);
       }
     }
-    ogg_stream_packetin(&enc->os, &op);
-    /* FIXME: Use flush to enforce latency constraint. */
-    while (ogg_stream_pageout_fill(&enc->os, &og, 255*255)) {
-      int ret = oe_write_page(&og, &enc->callbacks, enc->user_data);
-      /* FIXME: what do we do if this fails? */
-      assert(ret != -1);
-    }
+    if (op.e_o_s) return;
     enc->buffer_start += enc->frame_size;
   }
   /* If we've reached the end of the buffer, move everything back to the front. */

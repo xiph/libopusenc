@@ -470,6 +470,26 @@ int ope_encoder_ctl(OggOpusEnc *enc, int request, ...) {
       ret = opus_multistream_encoder_ctl(enc->st, request, value);
     }
     break;
+    case OPUS_SET_EXPERT_FRAME_DURATION_REQUEST:
+    {
+      opus_int32 value = va_arg(ap, opus_int32);
+      int max_supported = OPUS_FRAMESIZE_60_MS;
+#ifdef OPUS_FRAMESIZE_120_MS
+      max_supported = OPUS_FRAMESIZE_120_MS;
+#endif
+      if (value < OPUS_FRAMESIZE_2_5_MS || value > max_supported) {
+        ret = OPE_UNIMPLEMENTED;
+        break;
+      }
+      ret = opus_multistream_encoder_ctl(enc->st, request, value);
+      if (ret == OPUS_OK) {
+        if (value <= OPUS_FRAMESIZE_40_MS)
+          enc->frame_size = 120<<(value-OPUS_FRAMESIZE_2_5_MS);
+        else
+          enc->frame_size = (value-OPUS_FRAMESIZE_2_5_MS-2)*960;
+      }
+    }
+    break;
     default:
       ret = OPE_UNIMPLEMENTED;
   }

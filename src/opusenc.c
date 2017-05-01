@@ -42,6 +42,8 @@
 #include "opus_header.h"
 #include "speex_resampler.h"
 
+#define MAX_CHANNELS 8
+
 #define LPC_PADDING 120
 
 /* Allow up to 2 seconds for delayed decision. */
@@ -159,11 +161,11 @@ OggOpusEnc *ope_create_callbacks(const OpusEncCallbacks *callbacks, void *user_d
     return NULL;
   }
   /* FIXME: Add resampling support. */
-  if (rate != 48000) {
-    if (error) *error = OPE_UNIMPLEMENTED;
+  if (rate <= 0) {
+    if (error) *error = OPE_BAD_ARG;
     return NULL;
   }
-  
+
   if ( (enc = malloc(sizeof(*enc))) == NULL) goto fail;
   enc->rate = rate;
   enc->channels = channels;
@@ -179,9 +181,10 @@ OggOpusEnc *ope_create_callbacks(const OpusEncCallbacks *callbacks, void *user_d
   if (! (ret == OPUS_OK && st != NULL) ) {
     goto fail;
   }
-  if (rate != 48000) {
+  if (1||rate != 48000) {
     enc->re = speex_resampler_init(channels, rate, 48000, 5, NULL);
     if (enc->re == NULL) goto fail;
+    speex_resampler_skip_zeros(enc->re);
   } else {
     enc->re = NULL;
   }
@@ -197,7 +200,7 @@ OggOpusEnc *ope_create_callbacks(const OpusEncCallbacks *callbacks, void *user_d
     else enc->header.preskip = 0;
   }
   enc->curr_granule = 0;
-  enc->end_granule = enc->header.preskip;
+  enc->end_granule = 0;
   comment_init(&enc->comment, &enc->comment_length, opus_get_version_string());
   {
     char encoder_string[1024];
@@ -275,6 +278,8 @@ static void shift_buffer(OggOpusEnc *enc) {
 }
 
 static void encode_buffer(OggOpusEnc *enc) {
+  /* Round up when converting the granule pos because the decoder will round down. */
+  ogg_int64_t end_granule48k = (enc->end_granule*48000 + enc->rate - 1)/enc->rate + enc->header.preskip;
   while (enc->buffer_end-enc->buffer_start > enc->frame_size + enc->decision_delay) {
     ogg_packet op;
     ogg_page og;
@@ -291,8 +296,8 @@ static void encode_buffer(OggOpusEnc *enc) {
     op.e_o_s=0;
     op.packetno=enc->packetno++;
     op.granulepos=enc->curr_granule;
-    if (enc->curr_granule >= enc->end_granule) {
-      op.granulepos=enc->end_granule;
+    if (enc->curr_granule >= end_granule48k) {
+      op.granulepos=end_granule48k;
       op.e_o_s=1;
       ogg_stream_packetin(&enc->os, &op);
       while (ogg_stream_flush_fill(&enc->os, &og, 255*255)) {
@@ -323,41 +328,61 @@ static void encode_buffer(OggOpusEnc *enc) {
 int ope_write_float(OggOpusEnc *enc, const float *pcm, int samples_per_channel) {
   int channels = enc->channels;
   if (!enc->stream_is_init) init_stream(enc);
+  if (samples_per_channel < 0) return OPE_BAD_ARG;
   enc->end_granule += samples_per_channel;
-  /* FIXME: Add resampling support. */
   do {
     int i;
-    int curr;
-    int space_left = BUFFER_SAMPLES-enc->buffer_end;
-    curr = MIN(samples_per_channel, space_left);
-    for (i=0;i<channels*curr;i++) {
+    spx_uint32_t in_samples, out_samples;
+    out_samples = BUFFER_SAMPLES-enc->buffer_end;
+    if (enc->re != NULL) {
+      in_samples = samples_per_channel;
+      speex_resampler_process_interleaved_float(enc->re, pcm, &in_samples, &enc->buffer[channels*enc->buffer_end], &out_samples);
+    } else {
+      int curr;
+      curr = MIN((spx_uint32_t)samples_per_channel, out_samples);
+      for (i=0;i<channels*curr;i++) {
       enc->buffer[channels*enc->buffer_end+i] = pcm[i];
+      }
+      in_samples = out_samples = curr;
     }
-    enc->buffer_end += curr;
-    pcm += curr*channels;
-    samples_per_channel -= curr;
+    enc->buffer_end += out_samples;
+    pcm += in_samples*channels;
+    samples_per_channel -= in_samples;
     encode_buffer(enc);
   } while (samples_per_channel > 0);
   return OPE_OK;
 }
 
+#define CONVERT_BUFFER 256
+
 /* Add/encode any number of int16 samples to the file. */
 int ope_write(OggOpusEnc *enc, const opus_int16 *pcm, int samples_per_channel) {
   int channels = enc->channels;
   if (!enc->stream_is_init) init_stream(enc);
+  if (samples_per_channel < 0) return OPE_BAD_ARG;
   enc->end_granule += samples_per_channel;
-  /* FIXME: Add resampling support. */
   do {
     int i;
-    int curr;
-    int space_left = BUFFER_SAMPLES-enc->buffer_end;
-    curr = MIN(samples_per_channel, space_left);
-    for (i=0;i<channels*curr;i++) {
-      enc->buffer[channels*enc->buffer_end+i] = (1.f/32768)*pcm[i];
+    spx_uint32_t in_samples, out_samples;
+    out_samples = BUFFER_SAMPLES-enc->buffer_end;
+    if (enc->re != NULL) {
+      float buf[CONVERT_BUFFER*MAX_CHANNELS];
+      in_samples = MIN(CONVERT_BUFFER, samples_per_channel);
+      for (i=0;i<channels*(int)in_samples;i++) {
+        buf[i] = (1.f/32768)*pcm[i];
+      }
+      speex_resampler_process_interleaved_float(enc->re, buf, &in_samples, &enc->buffer[channels*enc->buffer_end], &out_samples);
+    } else {
+      int curr;
+      curr = MIN((spx_uint32_t)samples_per_channel, out_samples);
+      for (i=0;i<channels*curr;i++) {
+        enc->buffer[channels*enc->buffer_end+i] = (1.f/32768)*pcm[i];
+      }
+      in_samples = out_samples = curr;
     }
-    enc->buffer_end += curr;
-    pcm += curr*channels;
-    samples_per_channel -= curr;
+    enc->buffer_end += out_samples;
+    pcm += in_samples*channels;
+    samples_per_channel -= in_samples;
     encode_buffer(enc);
   } while (samples_per_channel > 0);
   return OPE_OK;

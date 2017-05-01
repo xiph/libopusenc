@@ -478,7 +478,7 @@ int ope_encoder_ctl(OggOpusEnc *enc, int request, ...) {
       max_supported = OPUS_FRAMESIZE_120_MS;
 #endif
       if (value < OPUS_FRAMESIZE_2_5_MS || value > max_supported) {
-        ret = OPE_UNIMPLEMENTED;
+        ret = OPUS_UNIMPLEMENTED;
         break;
       }
       ret = opus_multistream_encoder_ctl(enc->st, request, value);
@@ -491,7 +491,7 @@ int ope_encoder_ctl(OggOpusEnc *enc, int request, ...) {
     }
     break;
     default:
-      ret = OPE_UNIMPLEMENTED;
+      ret = OPUS_UNIMPLEMENTED;
   }
   va_end(ap);
   return ret;
@@ -499,9 +499,35 @@ int ope_encoder_ctl(OggOpusEnc *enc, int request, ...) {
 
 /* ctl()-type call for the OggOpus layer. */
 int ope_set_params(OggOpusEnc *enc, int request, ...) {
-  (void)enc;
+  int ret;
+  va_list ap;
+  va_start(ap, request);
   switch (request) {
+    case OPE_SET_DECISION_DELAY_REQUEST:
+    {
+      opus_int32 value = va_arg(ap, opus_int32);
+      if (value < 0) {
+        ret = OPE_BAD_ARG;
+        break;
+      }
+      enc->decision_delay = value;
+      ret = OPE_OK;
+    }
+    break;
+    case OPE_SET_MUXING_DELAY_REQUEST:
+    {
+      opus_int32 value = va_arg(ap, opus_int32);
+      if (value < 0) {
+        ret = OPE_BAD_ARG;
+        break;
+      }
+      enc->max_ogg_delay = value;
+      ret = OPE_OK;
+    }
+    break;
     default:
       return OPE_UNIMPLEMENTED;
   }
+  va_end(ap);
+  return ret;
 }

@@ -54,6 +54,18 @@ extern "C" {
 #define OPE_BAD_ARG -12
 #define OPE_INTERNAL_ERROR -13
 
+/* These are the "raw" request values -- they should usually not be used. */
+#define OPE_SET_DECISION_DELAY_REQUEST 14000
+#define OPE_GET_DECISION_DELAY_REQUEST 14001
+#define OPE_SET_MUXING_DELAY_REQUEST 14002
+#define OPE_GET_MUXING_DELAY_REQUEST 14003
+
+#define OPE_SET_DECISION_DELAY(x) OPE_SET_DECISION_DELAY_REQUEST, __opus_check_int(x)
+#define OPE_GET_DECISION_DELAY(x) OPE_GET_DECISION_DELAY_REQUEST, __opus_check_int_ptr(x)
+#define OPE_SET_MUXING_DELAY(x) OPE_SET_MUXING_DELAY_REQUEST, __opus_check_int(x)
+#define OPE_GET_MUXING_DELAY(x) OPE_GET_MUXING_DELAY_REQUEST, __opus_check_int_ptr(x)
+
+
 typedef int (*ope_write_func)(void *user_data, const unsigned char *ptr, int len);
 
 typedef int (*ope_close_func)(void *user_data);

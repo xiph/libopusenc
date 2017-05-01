@@ -478,12 +478,21 @@ int ope_encoder_ctl(OggOpusEnc *enc, int request, ...) {
   va_list ap;
   va_start(ap, request);
   switch (request) {
+    case OPUS_SET_APPLICATION_REQUEST:
     case OPUS_SET_BITRATE_REQUEST:
+    case OPUS_SET_MAX_BANDWIDTH_REQUEST:
     case OPUS_SET_VBR_REQUEST:
-    case OPUS_SET_VBR_CONSTRAINT_REQUEST:
+    case OPUS_SET_BANDWIDTH_REQUEST:
     case OPUS_SET_COMPLEXITY_REQUEST:
+    case OPUS_SET_INBAND_FEC_REQUEST:
     case OPUS_SET_PACKET_LOSS_PERC_REQUEST:
+    case OPUS_SET_DTX_REQUEST:
+    case OPUS_SET_VBR_CONSTRAINT_REQUEST:
+    case OPUS_SET_FORCE_CHANNELS_REQUEST:
+    case OPUS_SET_SIGNAL_REQUEST:
     case OPUS_SET_LSB_DEPTH_REQUEST:
+    case OPUS_SET_PREDICTION_DISABLED_REQUEST:
+    case OPUS_SET_PHASE_INVERSION_DISABLED_REQUEST:
     {
       opus_int32 value = va_arg(ap, opus_int32);
       ret = opus_multistream_encoder_ctl(enc->st, request, value);

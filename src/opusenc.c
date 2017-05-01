@@ -42,6 +42,7 @@
 #include "opusenc.h"
 #include "opus_header.h"
 #include "speex_resampler.h"
+#include "picture.h"
 
 #define MAX_CHANNELS 8
 
@@ -93,6 +94,7 @@ struct OggOpusEnc {
   int comment_padding;
   char *comment;
   int comment_length;
+  int seen_file_icons;
   ogg_stream_state os;
   int stream_is_init;
   int packetno;
@@ -176,6 +178,7 @@ OggOpusEnc *ope_create_callbacks(const OpusEncCallbacks *callbacks, void *user_d
   enc->decision_delay = 96000;
   enc->max_ogg_delay = 48000;
   enc->comment_padding = 512;
+  enc->seen_file_icons = 0;
   enc->header.channels=channels;
   enc->header.channel_mapping=family;
   enc->header.input_sample_rate=rate;
@@ -445,6 +448,20 @@ int ope_continue_new_callbacks(OggOpusEnc *enc, void *user_data) {
 /* Add a comment to the file (can only be called before encoding samples). */
 int ope_add_comment(OggOpusEnc *enc, const char *tag, const char *val) {
   if (comment_add(&enc->comment, &enc->comment_length, tag, val)) return OPE_INTERNAL_ERROR;
+  return OPE_OK;
+}
+
+int ope_add_picture(OggOpusEnc *enc, const char *spec) {
+  const char *error_message;
+  char *picture_data;
+  picture_data = parse_picture_specification(spec, &error_message, &enc->seen_file_icons);
+  if(picture_data==NULL){
+    /* FIXME: return proper errors rather than printing a message. */
+    fprintf(stderr,"Error parsing picture option: %s\n",error_message);
+    return OPE_BAD_ARG;
+  }
+  comment_add(&enc->comment, &enc->comment_length, "METADATA_BLOCK_PICTURE", picture_data);
+  free(picture_data);
   return OPE_OK;
 }
 

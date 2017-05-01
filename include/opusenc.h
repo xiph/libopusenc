@@ -113,6 +113,9 @@ OPE_EXPORT int ope_continue_new_callbacks(OggOpusEnc *enc, void *user_data);
 /** Add a comment to the file (can only be called before encoding samples). */
 OPE_EXPORT int ope_add_comment(OggOpusEnc *enc, const char *tag, const char *val);
 
+/** Add a picture to the file (can only be called before encoding samples). */
+OPE_EXPORT int ope_add_picture(OggOpusEnc *enc, const char *spec);
+
 /** Sets the Opus comment vendor string (optional, defaults to library info). */
 OPE_EXPORT int ope_set_vendor_string(OggOpusEnc *enc, const char *vendor);
 

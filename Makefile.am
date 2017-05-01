@@ -13,6 +13,7 @@ lib_LTLIBRARIES = libopusenc.la
 libopusenc_la_SOURCES = \
 	src/opus_header.c \
 	src/opusenc.c \
+	src/picture.c \
 	src/resample.c
 libopusenc_la_LIBADD = $(DEPS_LIBS) $(lrintf_lib)
 libopusenc_la_LDFLAGS = -no-undefined \

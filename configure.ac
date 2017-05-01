@@ -21,6 +21,9 @@ AC_SYS_LARGEFILE
 
 AM_INIT_AUTOMAKE([1.11 foreign no-define dist-zip subdir-objects])
 AM_MAINTAINER_MODE([enable])
+
+AC_C_INLINE
+
 LT_INIT
 
 m4_ifdef([AM_SILENT_RULES], [AM_SILENT_RULES([yes])])
@@ -44,7 +47,7 @@ AC_SUBST(OP_LT_REVISION)
 AC_SUBST(OP_LT_AGE)
 
 CC_CHECK_CFLAGS_APPEND(
-  [-std=c89 -pedantic -Wall -Wextra -Wno-parentheses -Wno-long-long])
+  [-pedantic -Wall -Wextra -Wno-parentheses -Wno-long-long])
 
 # Platform-specific tweaks
 case $host in

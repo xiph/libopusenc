@@ -1,5 +1,7 @@
 ACLOCAL_AMFLAGS = -I m4
 
+DEFS += -DSPX_RESAMPLE_EXPORT= -DRANDOM_PREFIX=libopusenc -DOUTSIDE_SPEEX -DFLOATING_POINT
+
 AM_CFLAGS = -I$(top_srcdir)/include $(DEPS_CFLAGS)
 
 dist_doc_DATA = COPYING AUTHORS README.md
@@ -10,7 +12,8 @@ opusinclude_HEADERS = include/opusenc.h
 lib_LTLIBRARIES = libopusenc.la
 libopusenc_la_SOURCES = \
 	src/opus_header.c \
-	src/opusenc.c
+	src/opusenc.c \
+	src/resample.c
 libopusenc_la_LIBADD = $(DEPS_LIBS) $(lrintf_lib)
 libopusenc_la_LDFLAGS = -no-undefined \
  -version-info @OP_LT_CURRENT@:@OP_LT_REVISION@:@OP_LT_AGE@

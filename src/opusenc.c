@@ -93,6 +93,8 @@ struct OggOpusEnc {
   OpusHeader header;
   int comment_padding;
   char *comment;
+  int serialno_is_set;
+  int serialno;
   int comment_length;
   int seen_file_icons;
   ogg_stream_state os;
@@ -178,6 +180,7 @@ OggOpusEnc *ope_create_callbacks(const OpusEncCallbacks *callbacks, void *user_d
   enc->decision_delay = 96000;
   enc->max_ogg_delay = 48000;
   enc->comment_padding = 512;
+  enc->serialno_is_set = 0;
   enc->seen_file_icons = 0;
   enc->header.channels=channels;
   enc->header.channel_mapping=family;
@@ -236,13 +239,15 @@ fail:
 
 static void init_stream(OggOpusEnc *enc) {
   time_t start_time;
-  int serialno;
   assert(!enc->stream_is_init);
-  start_time = time(NULL);
-  srand(((getpid()&65535)<<15)^start_time);
+  if (!enc->serialno_is_set) {
+    start_time = time(NULL);
+    srand(((getpid()&65535)<<15)^start_time);
 
-  serialno = rand();
-  if (ogg_stream_init(&enc->os, serialno) == -1) {
+    enc->serialno = rand();
+  }
+  
+  if (ogg_stream_init(&enc->os, enc->serialno) == -1) {
     assert(0);
     /* FIXME: How the hell do we handle that? */
   }
@@ -492,7 +497,9 @@ int ope_encoder_ctl(OggOpusEnc *enc, int request, ...) {
     case OPUS_SET_SIGNAL_REQUEST:
     case OPUS_SET_LSB_DEPTH_REQUEST:
     case OPUS_SET_PREDICTION_DISABLED_REQUEST:
+#ifdef OPUS_SET_PHASE_INVERSION_DISABLED_REQUEST
     case OPUS_SET_PHASE_INVERSION_DISABLED_REQUEST:
+#endif
     {
       opus_int32 value = va_arg(ap, opus_int32);
       ret = opus_multistream_encoder_ctl(enc->st, request, value);
@@ -561,6 +568,14 @@ int ope_set_params(OggOpusEnc *enc, int request, ...) {
         break;
       }
       enc->comment_padding = value;
+      ret = OPE_OK;
+    }
+    break;
+    case OPE_SET_SERIALNO_REQUEST:
+    {
+      opus_int32 value = va_arg(ap, opus_int32);
+      enc->serialno = value;
+      enc->serialno_is_set = 1;
       ret = OPE_OK;
     }
     break;

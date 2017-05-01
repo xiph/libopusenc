@@ -61,6 +61,8 @@ extern "C" {
 #define OPE_GET_MUXING_DELAY_REQUEST 14003
 #define OPE_SET_COMMENT_PADDING_REQUEST 14004
 #define OPE_GET_COMMENT_PADDING_REQUEST 14005
+#define OPE_SET_SERIALNO_REQUEST 14006
+#define OPE_GET_SERIALNO_REQUEST 14007
 
 #define OPE_SET_DECISION_DELAY(x) OPE_SET_DECISION_DELAY_REQUEST, __opus_check_int(x)
 #define OPE_GET_DECISION_DELAY(x) OPE_GET_DECISION_DELAY_REQUEST, __opus_check_int_ptr(x)
@@ -68,6 +70,8 @@ extern "C" {
 #define OPE_GET_MUXING_DELAY(x) OPE_GET_MUXING_DELAY_REQUEST, __opus_check_int_ptr(x)
 #define OPE_SET_COMMENT_PADDING(x) OPE_SET_COMMENT_PADDING_REQUEST, __opus_check_int(x)
 #define OPE_GET_COMMENT_PADDING(x) OPE_GET_COMMENT_PADDING_REQUEST, __opus_check_int_ptr(x)
+#define OPE_SET_SERIALNO(x) OPE_SET_SERIALNO_REQUEST, __opus_check_int(x)
+#define OPE_GET_SERIALNO(x) OPE_GET_SERIALNO_REQUEST, __opus_check_int_ptr(x)
 
 
 typedef int (*ope_write_func)(void *user_data, const unsigned char *ptr, int len);

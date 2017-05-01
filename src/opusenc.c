@@ -31,6 +31,7 @@
 #include "config.h"
 #endif
 
+#include <stdarg.h>
 #include <time.h>
 #include <unistd.h>
 #include <stdlib.h>
@@ -445,14 +446,33 @@ int ope_set_vendor_string(OggOpusEnc *enc, const char *vendor) {
 
 /* Goes straight to the libopus ctl() functions. */
 int ope_encoder_ctl(OggOpusEnc *enc, int request, ...) {
-  (void)enc;
-  (void)request;
-  return OPE_UNIMPLEMENTED;
+  int ret;
+  va_list ap;
+  va_start(ap, request);
+  switch (request) {
+    case OPUS_SET_BITRATE_REQUEST:
+    case OPUS_SET_VBR_REQUEST:
+    case OPUS_SET_VBR_CONSTRAINT_REQUEST:
+    case OPUS_SET_COMPLEXITY_REQUEST:
+    case OPUS_SET_PACKET_LOSS_PERC_REQUEST:
+    case OPUS_SET_LSB_DEPTH_REQUEST:
+    {
+      opus_int32 value = va_arg(ap, opus_int32);
+      ret = opus_multistream_encoder_ctl(enc->st, request, value);
+    }
+    break;
+    default:
+      ret = OPE_UNIMPLEMENTED;
+  }
+  va_end(ap);
+  return ret;
 }
 
 /* ctl()-type call for the OggOpus layer. */
 int ope_set_params(OggOpusEnc *enc, int request, ...) {
   (void)enc;
-  (void)request;
-  return OPE_UNIMPLEMENTED;
+  switch (request) {
+    default:
+      return OPE_UNIMPLEMENTED;
+  }
 }

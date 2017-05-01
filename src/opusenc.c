@@ -193,10 +193,11 @@ OggOpusEnc *ope_create_callbacks(const OpusEncCallbacks *callbacks, void *user_d
     opus_int32 tmp;
     int ret;
     ret = opus_multistream_encoder_ctl(st, OPUS_GET_LOOKAHEAD(&tmp));
-    if (ret == OPUS_OK) enc->curr_granule = -tmp;
-    else enc->curr_granule = 0;
+    if (ret == OPUS_OK) enc->header.preskip = tmp;
+    else enc->header.preskip = 0;
   }
-  enc->end_granule = 0;
+  enc->curr_granule = 0;
+  enc->end_granule = enc->header.preskip;
   comment_init(&enc->comment, &enc->comment_length, opus_get_version_string());
   {
     char encoder_string[1024];
@@ -234,8 +235,6 @@ static void init_stream(OggOpusEnc *enc) {
     assert(0);
     /* FIXME: How the hell do we handle that? */
   }
-  /* FIXME: Compute preskip. */
-  enc->header.preskip = 0;
   comment_pad(&enc->comment, &enc->comment_length, 512);
 
   /*Write header*/
@@ -294,6 +293,7 @@ static void encode_buffer(OggOpusEnc *enc) {
     op.granulepos=enc->curr_granule;
     if (enc->curr_granule >= enc->end_granule) {
       op.granulepos=enc->end_granule;
+      op.e_o_s=1;
       ogg_stream_packetin(&enc->os, &op);
       while (ogg_stream_flush_fill(&enc->os, &og, 255*255)) {
         int ret = oe_write_page(&og, &enc->callbacks, enc->user_data);

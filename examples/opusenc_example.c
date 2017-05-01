@@ -31,5 +31,6 @@ int main(int argc, char **argv) {
     } else break;
   }
   ope_close_and_free(enc);
+  fclose(fin);
   return 0;
 }

@@ -90,7 +90,6 @@ struct OggOpusEnc {
   OpusHeader header;
   char *comment;
   int comment_length;
-  int os_allocated;
   ogg_stream_state os;
   int stream_is_init;
   int packetno;
@@ -190,7 +189,6 @@ OggOpusEnc *ope_create_callbacks(const OpusEncCallbacks *callbacks, void *user_d
     enc->re = NULL;
   }
   opus_multistream_encoder_ctl(st, OPUS_SET_EXPERT_FRAME_DURATION(OPUS_FRAMESIZE_20_MS));
-  enc->os_allocated = 0;
   enc->stream_is_init = 0;
   enc->comment = NULL;
   {
@@ -405,9 +403,13 @@ static void finalize_stream(OggOpusEnc *enc) {
 /* Close/finalize the stream. */
 int ope_close_and_free(OggOpusEnc *enc) {
   finalize_stream(enc);
+  enc->callbacks.close(enc->user_data);
+  free(enc->comment);
   free(enc->buffer);
   opus_multistream_encoder_destroy(enc->st);
-  if (enc->os_allocated) ogg_stream_clear(&enc->os);
+  if (enc->stream_is_init) ogg_stream_clear(&enc->os);
+  if (enc->re) speex_resampler_destroy(enc->re);
+  free(enc);
   return OPE_OK;
 }
 

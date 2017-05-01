@@ -90,6 +90,7 @@ struct OggOpusEnc {
   OpusEncCallbacks callbacks;
   void *user_data;
   OpusHeader header;
+  int comment_padding;
   char *comment;
   int comment_length;
   ogg_stream_state os;
@@ -174,6 +175,7 @@ OggOpusEnc *ope_create_callbacks(const OpusEncCallbacks *callbacks, void *user_d
   enc->frame_size = 960;
   enc->decision_delay = 96000;
   enc->max_ogg_delay = 48000;
+  enc->comment_padding = 512;
   enc->header.channels=channels;
   enc->header.channel_mapping=family;
   enc->header.input_sample_rate=rate;
@@ -241,7 +243,7 @@ static void init_stream(OggOpusEnc *enc) {
     assert(0);
     /* FIXME: How the hell do we handle that? */
   }
-  comment_pad(&enc->comment, &enc->comment_length, 512);
+  comment_pad(&enc->comment, &enc->comment_length, enc->comment_padding);
 
   /*Write header*/
   {
@@ -522,6 +524,17 @@ int ope_set_params(OggOpusEnc *enc, int request, ...) {
         break;
       }
       enc->max_ogg_delay = value;
+      ret = OPE_OK;
+    }
+    break;
+    case OPE_SET_COMMENT_PADDING_REQUEST:
+    {
+      opus_int32 value = va_arg(ap, opus_int32);
+      if (value < 0) {
+        ret = OPE_BAD_ARG;
+        break;
+      }
+      enc->comment_padding = value;
       ret = OPE_OK;
     }
     break;

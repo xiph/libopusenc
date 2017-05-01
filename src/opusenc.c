@@ -182,7 +182,7 @@ OggOpusEnc *ope_create_callbacks(const OpusEncCallbacks *callbacks, void *user_d
   if (! (ret == OPUS_OK && st != NULL) ) {
     goto fail;
   }
-  if (1||rate != 48000) {
+  if (rate != 48000) {
     enc->re = speex_resampler_init(channels, rate, 48000, 5, NULL);
     if (enc->re == NULL) goto fail;
     speex_resampler_skip_zeros(enc->re);

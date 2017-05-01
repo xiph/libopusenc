@@ -40,6 +40,7 @@
 #include <opus_multistream.h>
 #include "opusenc.h"
 #include "opus_header.h"
+#include "speex_resampler.h"
 
 #define LPC_PADDING 120
 
@@ -71,10 +72,12 @@ struct StdioObject {
 
 struct OggOpusEnc {
   OpusMSEncoder *st;
+  int rate;
   int channels;
   float *buffer;
   int buffer_start;
   int buffer_end;
+  SpeexResamplerState *re;
   int frame_size;
   int decision_delay;
   ogg_int64_t curr_granule;
@@ -160,7 +163,9 @@ OggOpusEnc *ope_create_callbacks(const OpusEncCallbacks *callbacks, void *user_d
     if (error) *error = OPE_UNIMPLEMENTED;
     return NULL;
   }
+  
   if ( (enc = malloc(sizeof(*enc))) == NULL) goto fail;
+  enc->rate = rate;
   enc->channels = channels;
   enc->frame_size = 960;
   enc->decision_delay = 96000;
@@ -173,6 +178,12 @@ OggOpusEnc *ope_create_callbacks(const OpusEncCallbacks *callbacks, void *user_d
       enc->header.stream_map, OPUS_APPLICATION_AUDIO, &ret);
   if (! (ret == OPUS_OK && st != NULL) ) {
     goto fail;
+  }
+  if (rate != 48000) {
+    enc->re = speex_resampler_init(channels, rate, 48000, 5, NULL);
+    if (enc->re == NULL) goto fail;
+  } else {
+    enc->re = NULL;
   }
   opus_multistream_encoder_ctl(st, OPUS_SET_EXPERT_FRAME_DURATION(OPUS_FRAMESIZE_20_MS));
   enc->os_allocated = 0;

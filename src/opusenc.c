@@ -432,8 +432,8 @@ int ope_close_and_free(OggOpusEnc *enc) {
 
 /* Ends the stream and create a new stream within the same file. */
 int ope_chain_current(OggOpusEnc *enc) {
-  (void)enc;
-  return OPE_UNIMPLEMENTED;
+  /* FIXME: Make sure we don't end up calling the close callback too early. */
+  return ope_continue_new_callbacks(enc, enc->user_data);
 }
 
 /* Ends the stream and create a new file. */
@@ -483,6 +483,7 @@ int ope_set_vendor_string(OggOpusEnc *enc, const char *vendor) {
 int ope_flush_header(OggOpusEnc *enc) {
   if (enc->stream_is_init) return OPE_TOO_LATE;
   else init_stream(enc);
+  return OPE_OK;
 }
 
 /* Goes straight to the libopus ctl() functions. */

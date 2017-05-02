@@ -330,14 +330,20 @@ static void encode_buffer(OggOpusEnc *enc) {
   ogg_int64_t end_granule48k = (enc->streams->end_granule*48000 + enc->rate - 1)/enc->rate + enc->granule_offset;
   while (enc->buffer_end-enc->buffer_start > enc->frame_size + enc->decision_delay) {
     int cont;
+    opus_int32 pred;
     int flush_needed;
     ogg_packet op;
     ogg_page og;
     int nbBytes;
     unsigned char packet[MAX_PACKET_SIZE];
+    opus_multistream_encoder_ctl(enc->st, OPUS_GET_PREDICTION_DISABLED(&pred));
+    if (enc->curr_granule + enc->frame_size>= end_granule48k && enc->streams->next) {
+      opus_multistream_encoder_ctl(enc->st, OPUS_SET_PREDICTION_DISABLED(1));
+    }
     nbBytes = opus_multistream_encode_float(enc->st, &enc->buffer[enc->channels*enc->buffer_start],
         enc->buffer_end-enc->buffer_start, packet, MAX_PACKET_SIZE);
     /* FIXME: How do we handle failure here. */
+    opus_multistream_encoder_ctl(enc->st, OPUS_SET_PREDICTION_DISABLED(pred));
     assert(nbBytes > 0);
     enc->curr_granule += enc->frame_size;
     op.packet=packet;

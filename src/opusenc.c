@@ -86,6 +86,7 @@ struct EncStream {
   char *comment;
   int comment_length;
   int seen_file_icons;
+  int close_at_end;
   EncStream *next;
 };
 
@@ -107,6 +108,7 @@ struct OggOpusEnc {
   OpusHeader header;
   int comment_padding;
   EncStream *streams;
+  EncStream *last_stream;
 };
 
 static int oe_flush_page(OggOpusEnc *enc) {
@@ -184,12 +186,14 @@ OggOpusEnc *ope_create_callbacks(const OpusEncCallbacks *callbacks, void *user_d
   enc->streams = NULL;
   if ( (enc->streams = malloc(sizeof(*enc->streams))) == NULL) goto fail;
   enc->streams->next = NULL;
+  enc->last_stream = enc->streams;
   enc->rate = rate;
   enc->channels = channels;
   enc->frame_size = 960;
   enc->decision_delay = 96000;
   enc->max_ogg_delay = 48000;
   enc->comment_padding = 512;
+  enc->streams->close_at_end = 1;
   enc->streams->serialno_is_set = 0;
   enc->streams->seen_file_icons = 0;
   enc->header.channels=channels;
@@ -304,6 +308,13 @@ static void shift_buffer(OggOpusEnc *enc) {
     enc->buffer_start = 0;
 }
 
+static void stream_destroy(OggOpusEnc *enc, EncStream *stream) {
+  if (stream->comment) free(stream->comment);
+  if (stream->stream_is_init) ogg_stream_clear(&stream->os);
+  if (stream->close_at_end) enc->callbacks.close(stream->user_data);
+  free(stream);
+}
+
 static void encode_buffer(OggOpusEnc *enc) {
   /* Round up when converting the granule pos because the decoder will round down. */
   ogg_int64_t end_granule48k = (enc->end_granule*48000 + enc->rate - 1)/enc->rate + enc->header.preskip;
@@ -343,7 +354,14 @@ static void encode_buffer(OggOpusEnc *enc) {
         assert(ret != -1);
       }
     }
-    if (op.e_o_s) return;
+    if (op.e_o_s) {
+      EncStream *tmp;
+      tmp = enc->streams->next;
+      stream_destroy(enc, enc->streams);
+      enc->streams = tmp;
+      if (!tmp) enc->last_stream = 0;
+      return;
+    }
     enc->buffer_start += enc->frame_size;
   }
   /* If we've reached the end of the buffer, move everything back to the front. */
@@ -418,7 +436,7 @@ int ope_write(OggOpusEnc *enc, const opus_int16 *pcm, int samples_per_channel) {
   return OPE_OK;
 }
 
-static void finalize_stream(OggOpusEnc *enc) {
+static void finalize_all_streams(OggOpusEnc *enc) {
   /* FIXME: Use a better value. */
   int pad_samples = 3000;
   if (!enc->streams->stream_is_init) init_stream(enc);
@@ -429,16 +447,14 @@ static void finalize_stream(OggOpusEnc *enc) {
   enc->buffer_end += pad_samples;
   assert(enc->buffer_end <= BUFFER_SAMPLES);
   encode_buffer(enc);
+  assert(enc->streams == NULL);
 }
 
 /* Close/finalize the stream. */
 int ope_close_and_free(OggOpusEnc *enc) {
-  finalize_stream(enc);
-  enc->callbacks.close(enc->streams->user_data);
-  free(enc->streams->comment);
+  finalize_all_streams(enc);
   free(enc->buffer);
   opus_multistream_encoder_destroy(enc->st);
-  if (enc->streams->stream_is_init) ogg_stream_clear(&enc->streams->os);
   if (enc->re) speex_resampler_destroy(enc->re);
   free(enc);
   return OPE_OK;
@@ -446,10 +462,8 @@ int ope_close_and_free(OggOpusEnc *enc) {
 
 /* Ends the stream and create a new stream within the same file. */
 int ope_chain_current(OggOpusEnc *enc) {
-  EncStream *stream = enc->streams;
-  while (stream->next) stream = stream->next;
-  /* FIXME: Make sure we don't end up calling the close callback too early. */
-  return ope_continue_new_callbacks(enc, stream->user_data);
+  enc->last_stream->close_at_end = 0;
+  return ope_continue_new_callbacks(enc, enc->last_stream->user_data);
 }
 
 /* Ends the stream and create a new file. */

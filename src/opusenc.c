@@ -89,6 +89,7 @@ struct EncStream {
   int close_at_end;
   int header_is_frozen;
   ogg_int64_t end_granule;
+  ogg_int64_t granule_offset;
   EncStream *next;
 };
 
@@ -103,7 +104,7 @@ struct OggOpusEnc {
   int frame_size;
   int decision_delay;
   int max_ogg_delay;
-  int granule_offset;
+  int global_granule_offset;
   ogg_int64_t curr_granule;
   ogg_int64_t write_granule;
   ogg_int64_t last_page_granule;
@@ -175,6 +176,7 @@ EncStream *stream_create() {
   stream->seen_file_icons = 0;
   stream->stream_is_init = 0;
   stream->header_is_frozen = 0;
+  stream->granule_offset = 0;
   stream->comment = NULL;
   comment_init(&stream->comment, &stream->comment_length, opus_get_version_string());
   if (!stream->comment) goto fail;
@@ -251,7 +253,7 @@ OggOpusEnc *ope_create_callbacks(const OpusEncCallbacks *callbacks, void *user_d
     ret = opus_multistream_encoder_ctl(st, OPUS_GET_LOOKAHEAD(&tmp));
     if (ret == OPUS_OK) enc->header.preskip = tmp;
     else enc->header.preskip = 0;
-    enc->granule_offset = enc->header.preskip;
+    enc->global_granule_offset = enc->header.preskip;
   }
   enc->curr_granule = 0;
   enc->write_granule = 0;
@@ -327,7 +329,7 @@ static void shift_buffer(OggOpusEnc *enc) {
 
 static void encode_buffer(OggOpusEnc *enc) {
   /* Round up when converting the granule pos because the decoder will round down. */
-  ogg_int64_t end_granule48k = (enc->streams->end_granule*48000 + enc->rate - 1)/enc->rate + enc->granule_offset;
+  ogg_int64_t end_granule48k = (enc->streams->end_granule*48000 + enc->rate - 1)/enc->rate + enc->global_granule_offset;
   while (enc->buffer_end-enc->buffer_start > enc->frame_size + enc->decision_delay) {
     int cont;
     opus_int32 pred;
@@ -350,11 +352,11 @@ static void encode_buffer(OggOpusEnc *enc) {
     op.bytes=nbBytes;
     op.b_o_s=0;
     op.packetno=enc->streams->packetno++;
-    op.granulepos=enc->curr_granule;
+    op.granulepos=enc->curr_granule-enc->streams->granule_offset;
     op.e_o_s=enc->curr_granule >= end_granule48k;
     do {
       cont = 0;
-      if (op.e_o_s) op.granulepos=end_granule48k;
+      if (op.e_o_s) op.granulepos=end_granule48k-enc->streams->granule_offset;
       ogg_stream_packetin(&enc->streams->os, &op);
       /* FIXME: Also flush on too many segments. */
       flush_needed = op.e_o_s || enc->curr_granule - enc->last_page_granule > enc->max_ogg_delay;
@@ -382,11 +384,11 @@ static void encode_buffer(OggOpusEnc *enc) {
         if (!tmp) enc->last_stream = NULL;
         if (enc->last_stream == NULL) return;
         /* We're done with this stream, start the next one. */
-        /* FIXME: preskip seems to not work right. */
         enc->header.preskip = end_granule48k + enc->frame_size - enc->curr_granule;
+        enc->streams->granule_offset = enc->curr_granule - enc->frame_size;
         init_stream(enc);
-        end_granule48k = (enc->streams->end_granule*48000 + enc->rate - 1)/enc->rate + enc->granule_offset;
-        op.granulepos=enc->curr_granule;
+        end_granule48k = (enc->streams->end_granule*48000 + enc->rate - 1)/enc->rate + enc->global_granule_offset;
+        op.granulepos=enc->curr_granule - enc->streams->granule_offset;
         op.e_o_s=enc->curr_granule >= end_granule48k;
         cont = 1;
       }

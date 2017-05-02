@@ -87,6 +87,7 @@ struct EncStream {
   int comment_length;
   int seen_file_icons;
   int close_at_end;
+  ogg_int64_t end_granule;
   EncStream *next;
 };
 
@@ -102,7 +103,7 @@ struct OggOpusEnc {
   int decision_delay;
   int max_ogg_delay;
   ogg_int64_t curr_granule;
-  ogg_int64_t end_granule;
+  ogg_int64_t write_granule;
   ogg_int64_t last_page_granule;
   OpusEncCallbacks callbacks;
   OpusHeader header;
@@ -249,7 +250,7 @@ OggOpusEnc *ope_create_callbacks(const OpusEncCallbacks *callbacks, void *user_d
     else enc->header.preskip = 0;
   }
   enc->curr_granule = 0;
-  enc->end_granule = 0;
+  enc->write_granule = 0;
   enc->last_page_granule = 0;
   if ( (enc->buffer = malloc(sizeof(*enc->buffer)*BUFFER_SAMPLES*channels)) == NULL) goto fail;
   enc->buffer_start = enc->buffer_end = 0;
@@ -325,7 +326,7 @@ static void shift_buffer(OggOpusEnc *enc) {
 
 static void encode_buffer(OggOpusEnc *enc) {
   /* Round up when converting the granule pos because the decoder will round down. */
-  ogg_int64_t end_granule48k = (enc->end_granule*48000 + enc->rate - 1)/enc->rate + enc->header.preskip;
+  ogg_int64_t end_granule48k = (enc->streams->end_granule*48000 + enc->rate - 1)/enc->rate + enc->header.preskip;
   while (enc->buffer_end-enc->buffer_start > enc->frame_size + enc->decision_delay) {
     int flush_needed;
     ogg_packet op;
@@ -386,7 +387,8 @@ int ope_write_float(OggOpusEnc *enc, const float *pcm, int samples_per_channel) 
   int channels = enc->channels;
   if (!enc->streams->stream_is_init) init_stream(enc);
   if (samples_per_channel < 0) return OPE_BAD_ARG;
-  enc->end_granule += samples_per_channel;
+  enc->write_granule += samples_per_channel;
+  enc->last_stream->end_granule = enc->write_granule;
   do {
     int i;
     spx_uint32_t in_samples, out_samples;
@@ -417,7 +419,8 @@ int ope_write(OggOpusEnc *enc, const opus_int16 *pcm, int samples_per_channel) {
   int channels = enc->channels;
   if (!enc->streams->stream_is_init) init_stream(enc);
   if (samples_per_channel < 0) return OPE_BAD_ARG;
-  enc->end_granule += samples_per_channel;
+  enc->write_granule += samples_per_channel;
+  enc->last_stream->end_granule = enc->write_granule;
   do {
     int i;
     spx_uint32_t in_samples, out_samples;

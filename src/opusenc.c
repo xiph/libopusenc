@@ -162,6 +162,36 @@ OggOpusEnc *ope_create_file(const char *path, int rate, int channels, int family
   return enc;
 }
 
+EncStream *stream_create() {
+  EncStream *stream;
+  stream = malloc(sizeof(*stream));
+  if (!stream) return NULL;
+  stream->next = NULL;
+  stream->close_at_end = 1;
+  stream->serialno_is_set = 0;
+  stream->seen_file_icons = 0;
+  stream->stream_is_init = 0;
+  stream->comment = NULL;
+  comment_init(&stream->comment, &stream->comment_length, opus_get_version_string());
+  if (!stream->comment) goto fail;
+  {
+    char encoder_string[1024];
+    snprintf(encoder_string, sizeof(encoder_string), "%s version %s", PACKAGE_NAME, PACKAGE_VERSION);
+    comment_add(&stream->comment, &stream->comment_length, "ENCODER", encoder_string);
+  }
+  return stream;
+fail:
+  if (stream->comment) free(stream->comment);
+  free(stream);
+  return NULL;
+}
+
+static void stream_destroy(EncStream *stream) {
+  if (stream->comment) free(stream->comment);
+  if (stream->stream_is_init) ogg_stream_clear(&stream->os);
+  free(stream);
+}
+
 /* Create a new OggOpus file (callback-based). */
 OggOpusEnc *ope_create_callbacks(const OpusEncCallbacks *callbacks, void *user_data,
     int rate, int channels, int family, int *error) {
@@ -184,7 +214,7 @@ OggOpusEnc *ope_create_callbacks(const OpusEncCallbacks *callbacks, void *user_d
 
   if ( (enc = malloc(sizeof(*enc))) == NULL) goto fail;
   enc->streams = NULL;
-  if ( (enc->streams = malloc(sizeof(*enc->streams))) == NULL) goto fail;
+  if ( (enc->streams = stream_create()) == NULL) goto fail;
   enc->streams->next = NULL;
   enc->last_stream = enc->streams;
   enc->rate = rate;
@@ -193,9 +223,6 @@ OggOpusEnc *ope_create_callbacks(const OpusEncCallbacks *callbacks, void *user_d
   enc->decision_delay = 96000;
   enc->max_ogg_delay = 48000;
   enc->comment_padding = 512;
-  enc->streams->close_at_end = 1;
-  enc->streams->serialno_is_set = 0;
-  enc->streams->seen_file_icons = 0;
   enc->header.channels=channels;
   enc->header.channel_mapping=family;
   enc->header.input_sample_rate=rate;
@@ -214,8 +241,6 @@ OggOpusEnc *ope_create_callbacks(const OpusEncCallbacks *callbacks, void *user_d
     enc->re = NULL;
   }
   opus_multistream_encoder_ctl(st, OPUS_SET_EXPERT_FRAME_DURATION(OPUS_FRAMESIZE_20_MS));
-  enc->streams->stream_is_init = 0;
-  enc->streams->comment = NULL;
   {
     opus_int32 tmp;
     int ret;
@@ -226,13 +251,6 @@ OggOpusEnc *ope_create_callbacks(const OpusEncCallbacks *callbacks, void *user_d
   enc->curr_granule = 0;
   enc->end_granule = 0;
   enc->last_page_granule = 0;
-  comment_init(&enc->streams->comment, &enc->streams->comment_length, opus_get_version_string());
-  {
-    char encoder_string[1024];
-    snprintf(encoder_string, sizeof(encoder_string), "%s version %s", PACKAGE_NAME, PACKAGE_VERSION);
-    comment_add(&enc->streams->comment, &enc->streams->comment_length, "ENCODER", encoder_string);
-  }
-  if (enc->streams->comment == NULL) goto fail;
   if ( (enc->buffer = malloc(sizeof(*enc->buffer)*BUFFER_SAMPLES*channels)) == NULL) goto fail;
   enc->buffer_start = enc->buffer_end = 0;
   enc->st = st;
@@ -244,10 +262,7 @@ fail:
   if (enc) {
     free(enc);
     if (enc->buffer) free(enc->buffer);
-    if (enc->streams) {
-      free(enc->streams);
-      if (enc->streams->comment) free (enc->streams->comment);
-    }
+    if (enc->streams) stream_destroy(enc->streams);
   }
   if (st) {
     opus_multistream_encoder_destroy(st);
@@ -308,13 +323,6 @@ static void shift_buffer(OggOpusEnc *enc) {
     enc->buffer_start = 0;
 }
 
-static void stream_destroy(OggOpusEnc *enc, EncStream *stream) {
-  if (stream->comment) free(stream->comment);
-  if (stream->stream_is_init) ogg_stream_clear(&stream->os);
-  if (stream->close_at_end) enc->callbacks.close(stream->user_data);
-  free(stream);
-}
-
 static void encode_buffer(OggOpusEnc *enc) {
   /* Round up when converting the granule pos because the decoder will round down. */
   ogg_int64_t end_granule48k = (enc->end_granule*48000 + enc->rate - 1)/enc->rate + enc->header.preskip;
@@ -357,7 +365,8 @@ static void encode_buffer(OggOpusEnc *enc) {
     if (op.e_o_s) {
       EncStream *tmp;
       tmp = enc->streams->next;
-      stream_destroy(enc, enc->streams);
+      if (enc->streams->close_at_end) enc->callbacks.close(enc->streams->user_data);
+      stream_destroy(enc->streams);
       enc->streams = tmp;
       if (!tmp) enc->last_stream = 0;
       return;

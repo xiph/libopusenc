@@ -331,6 +331,7 @@ static void encode_buffer(OggOpusEnc *enc) {
   /* Round up when converting the granule pos because the decoder will round down. */
   ogg_int64_t end_granule48k = (enc->streams->end_granule*48000 + enc->rate - 1)/enc->rate + enc->header.preskip;
   while (enc->buffer_end-enc->buffer_start > enc->frame_size + enc->decision_delay) {
+    int cont;
     int flush_needed;
     ogg_packet op;
     ogg_page og;
@@ -347,34 +348,44 @@ static void encode_buffer(OggOpusEnc *enc) {
     op.packetno=enc->streams->packetno++;
     op.granulepos=enc->curr_granule;
     op.e_o_s=enc->curr_granule >= end_granule48k;
-    if (op.e_o_s) op.granulepos=end_granule48k;
-    ogg_stream_packetin(&enc->streams->os, &op);
-    /* FIXME: Also flush on too many segments. */
-    flush_needed = op.e_o_s || enc->curr_granule - enc->last_page_granule > enc->max_ogg_delay;
-    if (flush_needed) {
-      while (ogg_stream_flush_fill(&enc->streams->os, &og, 255*255)) {
-        if (ogg_page_packets(&og) != 0) enc->last_page_granule = ogg_page_granulepos(&og);
-        int ret = oe_write_page(&og, &enc->callbacks, enc->streams->user_data);
-        /* FIXME: what do we do if this fails? */
-        assert(ret != -1);
+    do {
+      cont = 0;
+      if (op.e_o_s) op.granulepos=end_granule48k;
+      ogg_stream_packetin(&enc->streams->os, &op);
+      /* FIXME: Also flush on too many segments. */
+      flush_needed = op.e_o_s || enc->curr_granule - enc->last_page_granule > enc->max_ogg_delay;
+      if (flush_needed) {
+        while (ogg_stream_flush_fill(&enc->streams->os, &og, 255*255)) {
+          if (ogg_page_packets(&og) != 0) enc->last_page_granule = ogg_page_granulepos(&og);
+          int ret = oe_write_page(&og, &enc->callbacks, enc->streams->user_data);
+          /* FIXME: what do we do if this fails? */
+          assert(ret != -1);
+        }
+      } else {
+        while (ogg_stream_pageout_fill(&enc->streams->os, &og, 255*255)) {
+          if (ogg_page_packets(&og) != 0) enc->last_page_granule = ogg_page_granulepos(&og);
+          int ret = oe_write_page(&og, &enc->callbacks, enc->streams->user_data);
+          /* FIXME: what do we do if this fails? */
+          assert(ret != -1);
+        }
       }
-    } else {
-      while (ogg_stream_pageout_fill(&enc->streams->os, &og, 255*255)) {
-        if (ogg_page_packets(&og) != 0) enc->last_page_granule = ogg_page_granulepos(&og);
-        int ret = oe_write_page(&og, &enc->callbacks, enc->streams->user_data);
-        /* FIXME: what do we do if this fails? */
-        assert(ret != -1);
+      if (op.e_o_s) {
+        EncStream *tmp;
+        tmp = enc->streams->next;
+        if (enc->streams->close_at_end) enc->callbacks.close(enc->streams->user_data);
+        stream_destroy(enc->streams);
+        enc->streams = tmp;
+        if (!tmp) enc->last_stream = NULL;
+        if (enc->last_stream == NULL) return;
+        /* We're done with this stream, start the next one. */
+        /* FIXME: Update preskip. */
+        init_stream(enc);
+        end_granule48k = (enc->streams->end_granule*48000 + enc->rate - 1)/enc->rate + enc->header.preskip;
+        op.granulepos=enc->curr_granule;
+        op.e_o_s=enc->curr_granule >= end_granule48k;
+        cont = 1;
       }
-    }
-    if (op.e_o_s) {
-      EncStream *tmp;
-      tmp = enc->streams->next;
-      if (enc->streams->close_at_end) enc->callbacks.close(enc->streams->user_data);
-      stream_destroy(enc->streams);
-      enc->streams = tmp;
-      if (!tmp) enc->last_stream = 0;
-      return;
-    }
+    } while (cont);
     enc->buffer_start += enc->frame_size;
   }
   /* If we've reached the end of the buffer, move everything back to the front. */
@@ -500,7 +511,7 @@ int ope_continue_new_callbacks(OggOpusEnc *enc, void *user_data) {
   new_stream->user_data = user_data;
   enc->last_stream->next = new_stream;
   enc->last_stream = new_stream;
-  return OEP_OK;
+  return OPE_OK;
 }
 
 /* Add a comment to the file (can only be called before encoding samples). */

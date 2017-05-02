@@ -87,6 +87,7 @@ struct EncStream {
   int comment_length;
   int seen_file_icons;
   int close_at_end;
+  int header_is_frozen;
   ogg_int64_t end_granule;
   EncStream *next;
 };
@@ -172,6 +173,7 @@ EncStream *stream_create() {
   stream->serialno_is_set = 0;
   stream->seen_file_icons = 0;
   stream->stream_is_init = 0;
+  stream->header_is_frozen = 0;
   stream->comment = NULL;
   comment_init(&stream->comment, &stream->comment_length, opus_get_version_string());
   if (!stream->comment) goto fail;
@@ -385,6 +387,7 @@ static void encode_buffer(OggOpusEnc *enc) {
 /* Add/encode any number of float samples to the file. */
 int ope_write_float(OggOpusEnc *enc, const float *pcm, int samples_per_channel) {
   int channels = enc->channels;
+  enc->last_stream->header_is_frozen = 1;
   if (!enc->streams->stream_is_init) init_stream(enc);
   if (samples_per_channel < 0) return OPE_BAD_ARG;
   enc->write_granule += samples_per_channel;
@@ -417,6 +420,7 @@ int ope_write_float(OggOpusEnc *enc, const float *pcm, int samples_per_channel) 
 /* Add/encode any number of int16 samples to the file. */
 int ope_write(OggOpusEnc *enc, const opus_int16 *pcm, int samples_per_channel) {
   int channels = enc->channels;
+  enc->last_stream->header_is_frozen = 1;
   if (!enc->streams->stream_is_init) init_stream(enc);
   if (samples_per_channel < 0) return OPE_BAD_ARG;
   enc->write_granule += samples_per_channel;
@@ -487,42 +491,51 @@ int ope_continue_new_file(OggOpusEnc *enc, const char *path) {
 
 /* Ends the stream and create a new file (callback-based). */
 int ope_continue_new_callbacks(OggOpusEnc *enc, void *user_data) {
-  (void)enc;
-  (void)user_data;
+  EncStream *new_stream;
+  assert(enc->streams);
+  assert(enc->last_stream);
+  new_stream = stream_create();
+  new_stream->user_data = user_data;
+  enc->last_stream->next = new_stream;
+  enc->last_stream = new_stream;
   return OPE_UNIMPLEMENTED;
 }
 
 /* Add a comment to the file (can only be called before encoding samples). */
 int ope_add_comment(OggOpusEnc *enc, const char *tag, const char *val) {
-  if (enc->streams->stream_is_init) return OPE_TOO_LATE;
-  if (comment_add(&enc->streams->comment, &enc->streams->comment_length, tag, val)) return OPE_INTERNAL_ERROR;
+  if (enc->last_stream->header_is_frozen) return OPE_TOO_LATE;
+  if (enc->last_stream->stream_is_init) return OPE_TOO_LATE;
+  if (comment_add(&enc->last_stream->comment, &enc->last_stream->comment_length, tag, val)) return OPE_INTERNAL_ERROR;
   return OPE_OK;
 }
 
 int ope_add_picture(OggOpusEnc *enc, const char *spec) {
   const char *error_message;
   char *picture_data;
-  if (enc->streams->stream_is_init) return OPE_TOO_LATE;
-  picture_data = parse_picture_specification(spec, &error_message, &enc->streams->seen_file_icons);
+  if (enc->last_stream->header_is_frozen) return OPE_TOO_LATE;
+  if (enc->last_stream->stream_is_init) return OPE_TOO_LATE;
+  picture_data = parse_picture_specification(spec, &error_message, &enc->last_stream->seen_file_icons);
   if(picture_data==NULL){
     /* FIXME: return proper errors rather than printing a message. */
     fprintf(stderr,"Error parsing picture option: %s\n",error_message);
     return OPE_BAD_ARG;
   }
-  comment_add(&enc->streams->comment, &enc->streams->comment_length, "METADATA_BLOCK_PICTURE", picture_data);
+  comment_add(&enc->last_stream->comment, &enc->last_stream->comment_length, "METADATA_BLOCK_PICTURE", picture_data);
   free(picture_data);
   return OPE_OK;
 }
 
 /* Sets the Opus comment vendor string (optional, defaults to library info). */
 int ope_set_vendor_string(OggOpusEnc *enc, const char *vendor) {
-  if (enc->streams->stream_is_init) return OPE_TOO_LATE;
+  if (enc->last_stream->header_is_frozen) return OPE_TOO_LATE;
+  if (enc->last_stream->stream_is_init) return OPE_TOO_LATE;
   (void)vendor;
   return OPE_UNIMPLEMENTED;
 }
 
 int ope_flush_header(OggOpusEnc *enc) {
-  if (enc->streams->stream_is_init) return OPE_TOO_LATE;
+  if (enc->last_stream->header_is_frozen) return OPE_TOO_LATE;
+  if (enc->last_stream->stream_is_init) return OPE_TOO_LATE;
   else init_stream(enc);
   return OPE_OK;
 }
@@ -624,8 +637,9 @@ int ope_set_params(OggOpusEnc *enc, int request, ...) {
     case OPE_SET_SERIALNO_REQUEST:
     {
       opus_int32 value = va_arg(ap, opus_int32);
-      enc->streams->serialno = value;
-      enc->streams->serialno_is_set = 1;
+      if (enc->last_stream->header_is_frozen) return OPE_TOO_LATE;
+      enc->last_stream->serialno = value;
+      enc->last_stream->serialno_is_set = 1;
       ret = OPE_OK;
     }
     break;

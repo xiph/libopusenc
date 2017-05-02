@@ -53,6 +53,7 @@ extern "C" {
 #define OPE_UNIMPLEMENTED -11
 #define OPE_BAD_ARG -12
 #define OPE_INTERNAL_ERROR -13
+#define OPE_TOO_LATE -14
 
 /* These are the "raw" request values -- they should usually not be used. */
 #define OPE_SET_DECISION_DELAY_REQUEST 14000
@@ -122,6 +123,9 @@ OPE_EXPORT int ope_add_picture(OggOpusEnc *enc, const char *spec);
 
 /** Sets the Opus comment vendor string (optional, defaults to library info). */
 OPE_EXPORT int ope_set_vendor_string(OggOpusEnc *enc, const char *vendor);
+
+/** Write out the header now rather than wait for audio to begin. */
+OPE_EXPORT int ope_flush_header(OggOpusEnc *enc);
 
 /** Goes straight to the libopus ctl() functions. */
 OPE_EXPORT int ope_encoder_ctl(OggOpusEnc *enc, int request, ...);

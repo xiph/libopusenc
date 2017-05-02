@@ -275,15 +275,11 @@ fail:
 }
 
 static void init_stream(OggOpusEnc *enc) {
-  time_t start_time;
   assert(!enc->streams->stream_is_init);
   if (!enc->streams->serialno_is_set) {
-    start_time = time(NULL);
-    srand(((getpid()&65535)<<15)^start_time);
-
     enc->streams->serialno = rand();
   }
-  
+
   if (ogg_stream_init(&enc->streams->os, enc->streams->serialno) == -1) {
     assert(0);
     /* FIXME: How the hell do we handle that? */

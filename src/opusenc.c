@@ -103,6 +103,7 @@ struct OggOpusEnc {
   int frame_size;
   int decision_delay;
   int max_ogg_delay;
+  int granule_offset;
   ogg_int64_t curr_granule;
   ogg_int64_t write_granule;
   ogg_int64_t last_page_granule;
@@ -250,6 +251,7 @@ OggOpusEnc *ope_create_callbacks(const OpusEncCallbacks *callbacks, void *user_d
     ret = opus_multistream_encoder_ctl(st, OPUS_GET_LOOKAHEAD(&tmp));
     if (ret == OPUS_OK) enc->header.preskip = tmp;
     else enc->header.preskip = 0;
+    enc->granule_offset = enc->header.preskip;
   }
   enc->curr_granule = 0;
   enc->write_granule = 0;
@@ -325,7 +327,7 @@ static void shift_buffer(OggOpusEnc *enc) {
 
 static void encode_buffer(OggOpusEnc *enc) {
   /* Round up when converting the granule pos because the decoder will round down. */
-  ogg_int64_t end_granule48k = (enc->streams->end_granule*48000 + enc->rate - 1)/enc->rate + enc->header.preskip;
+  ogg_int64_t end_granule48k = (enc->streams->end_granule*48000 + enc->rate - 1)/enc->rate + enc->granule_offset;
   while (enc->buffer_end-enc->buffer_start > enc->frame_size + enc->decision_delay) {
     int cont;
     int flush_needed;
@@ -374,9 +376,10 @@ static void encode_buffer(OggOpusEnc *enc) {
         if (!tmp) enc->last_stream = NULL;
         if (enc->last_stream == NULL) return;
         /* We're done with this stream, start the next one. */
-        /* FIXME: Update preskip. */
+        /* FIXME: preskip seems to not work right. */
+        enc->header.preskip = end_granule48k + enc->frame_size - enc->curr_granule;
         init_stream(enc);
-        end_granule48k = (enc->streams->end_granule*48000 + enc->rate - 1)/enc->rate + enc->header.preskip;
+        end_granule48k = (enc->streams->end_granule*48000 + enc->rate - 1)/enc->rate + enc->granule_offset;
         op.granulepos=enc->curr_granule;
         op.e_o_s=enc->curr_granule >= end_granule48k;
         cont = 1;

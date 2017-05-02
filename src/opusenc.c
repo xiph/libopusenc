@@ -259,7 +259,7 @@ OggOpusEnc *ope_create_callbacks(const OpusEncCallbacks *callbacks, void *user_d
   enc->st = st;
   enc->callbacks = *callbacks;
   enc->streams->user_data = user_data;
-  if (error) *error = OPUS_OK;
+  if (error) *error = OPE_OK;
   return enc;
 fail:
   if (enc) {
@@ -270,6 +270,7 @@ fail:
   if (st) {
     opus_multistream_encoder_destroy(st);
   }
+  if (error) *error = OPE_INTERNAL_ERROR;
   return NULL;
 }
 
@@ -495,10 +496,11 @@ int ope_continue_new_callbacks(OggOpusEnc *enc, void *user_data) {
   assert(enc->streams);
   assert(enc->last_stream);
   new_stream = stream_create();
+  if (!new_stream) return OPE_INTERNAL_ERROR;
   new_stream->user_data = user_data;
   enc->last_stream->next = new_stream;
   enc->last_stream = new_stream;
-  return OPE_UNIMPLEMENTED;
+  return OEP_OK;
 }
 
 /* Add a comment to the file (can only be called before encoding samples). */

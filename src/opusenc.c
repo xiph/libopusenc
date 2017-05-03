@@ -352,9 +352,9 @@ static void encode_buffer(OggOpusEnc *enc) {
     op.bytes=nbBytes;
     op.b_o_s=0;
     op.packetno=enc->streams->packetno++;
-    op.granulepos=enc->curr_granule-enc->streams->granule_offset;
-    op.e_o_s=enc->curr_granule >= end_granule48k;
     do {
+      op.granulepos=enc->curr_granule-enc->streams->granule_offset;
+      op.e_o_s=enc->curr_granule >= end_granule48k;
       cont = 0;
       if (op.e_o_s) op.granulepos=end_granule48k-enc->streams->granule_offset;
       ogg_stream_packetin(&enc->streams->os, &op);
@@ -362,14 +362,14 @@ static void encode_buffer(OggOpusEnc *enc) {
       flush_needed = op.e_o_s || enc->curr_granule - enc->last_page_granule > enc->max_ogg_delay;
       if (flush_needed) {
         while (ogg_stream_flush_fill(&enc->streams->os, &og, 255*255)) {
-          if (ogg_page_packets(&og) != 0) enc->last_page_granule = ogg_page_granulepos(&og);
+          if (ogg_page_packets(&og) != 0) enc->last_page_granule = ogg_page_granulepos(&og) + enc->streams->granule_offset;
           int ret = oe_write_page(&og, &enc->callbacks, enc->streams->user_data);
           /* FIXME: what do we do if this fails? */
           assert(ret != -1);
         }
       } else {
         while (ogg_stream_pageout_fill(&enc->streams->os, &og, 255*255)) {
-          if (ogg_page_packets(&og) != 0) enc->last_page_granule = ogg_page_granulepos(&og);
+          if (ogg_page_packets(&og) != 0) enc->last_page_granule = ogg_page_granulepos(&og) + enc->streams->granule_offset;
           int ret = oe_write_page(&og, &enc->callbacks, enc->streams->user_data);
           /* FIXME: what do we do if this fails? */
           assert(ret != -1);
@@ -388,8 +388,6 @@ static void encode_buffer(OggOpusEnc *enc) {
         enc->streams->granule_offset = enc->curr_granule - enc->frame_size;
         init_stream(enc);
         end_granule48k = (enc->streams->end_granule*48000 + enc->rate - 1)/enc->rate + enc->global_granule_offset;
-        op.granulepos=enc->curr_granule - enc->streams->granule_offset;
-        op.e_o_s=enc->curr_granule >= end_granule48k;
         cont = 1;
       }
     } while (cont);

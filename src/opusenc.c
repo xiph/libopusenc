@@ -108,6 +108,8 @@ struct OggOpusEnc {
   ogg_int64_t curr_granule;
   ogg_int64_t write_granule;
   ogg_int64_t last_page_granule;
+  unsigned char *chaining_keyframe;
+  int chaining_keyframe_length;
   OpusEncCallbacks callbacks;
   OpusHeader header;
   int comment_padding;
@@ -228,6 +230,8 @@ OggOpusEnc *ope_create_callbacks(const OpusEncCallbacks *callbacks, void *user_d
   enc->frame_size = 960;
   enc->decision_delay = 96000;
   enc->max_ogg_delay = 48000;
+  enc->chaining_keyframe = NULL;
+  enc->chaining_keyframe_length = -1;
   enc->comment_padding = 512;
   enc->header.channels=channels;
   enc->header.channel_mapping=family;
@@ -338,9 +342,13 @@ static void encode_buffer(OggOpusEnc *enc) {
     ogg_page og;
     int nbBytes;
     unsigned char packet[MAX_PACKET_SIZE];
+    int is_keyframe=0;
     opus_multistream_encoder_ctl(enc->st, OPUS_GET_PREDICTION_DISABLED(&pred));
-    if (enc->curr_granule + enc->frame_size>= end_granule48k && enc->streams->next) {
+    /* FIXME: a frame that follows a keyframe generally doesn't need to be a keyframe
+       unless there's two consecutive stream boundaries. */
+    if (enc->curr_granule + 2*enc->frame_size>= end_granule48k && enc->streams->next) {
       opus_multistream_encoder_ctl(enc->st, OPUS_SET_PREDICTION_DISABLED(1));
+      is_keyframe = 1;
     }
     nbBytes = opus_multistream_encode_float(enc->st, &enc->buffer[enc->channels*enc->buffer_start],
         enc->buffer_end-enc->buffer_start, packet, MAX_PACKET_SIZE);
@@ -386,11 +394,34 @@ static void encode_buffer(OggOpusEnc *enc) {
         /* We're done with this stream, start the next one. */
         enc->header.preskip = end_granule48k + enc->frame_size - enc->curr_granule;
         enc->streams->granule_offset = enc->curr_granule - enc->frame_size;
+        if (enc->chaining_keyframe) {
+          enc->header.preskip += enc->frame_size;
+          enc->streams->granule_offset -= enc->frame_size;
+        }
         init_stream(enc);
+        if (enc->chaining_keyframe) {
+          ogg_packet op2;
+          op2.packet = enc->chaining_keyframe;
+          op2.bytes = enc->chaining_keyframe_length;
+          op2.b_o_s = 0;
+          op2.e_o_s = 0;
+          op2.packetno=enc->streams->packetno++;
+          op2.granulepos=enc->curr_granule - enc->streams->granule_offset - enc->frame_size;
+          ogg_stream_packetin(&enc->streams->os, &op2);
+        }
         end_granule48k = (enc->streams->end_granule*48000 + enc->rate - 1)/enc->rate + enc->global_granule_offset;
         cont = 1;
       }
     } while (cont);
+    if (enc->chaining_keyframe) free(enc->chaining_keyframe);
+    if (is_keyframe) {
+      enc->chaining_keyframe = malloc(nbBytes);
+      enc->chaining_keyframe_length = nbBytes;
+      memcpy(enc->chaining_keyframe, packet, nbBytes);
+    } else {
+      enc->chaining_keyframe = NULL;
+      enc->chaining_keyframe_length = -1;
+    }
     enc->buffer_start += enc->frame_size;
   }
   /* If we've reached the end of the buffer, move everything back to the front. */
@@ -486,6 +517,7 @@ static void finalize_all_streams(OggOpusEnc *enc) {
 /* Close/finalize the stream. */
 int ope_close_and_free(OggOpusEnc *enc) {
   finalize_all_streams(enc);
+  if (enc->chaining_keyframe) free(enc->chaining_keyframe);
   free(enc->buffer);
   opus_multistream_encoder_destroy(enc->st);
   if (enc->re) speex_resampler_destroy(enc->re);

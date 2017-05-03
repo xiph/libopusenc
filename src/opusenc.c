@@ -533,9 +533,20 @@ int ope_chain_current(OggOpusEnc *enc) {
 
 /* Ends the stream and create a new file. */
 int ope_continue_new_file(OggOpusEnc *enc, const char *path) {
-  (void)enc;
-  (void)path;
-  return OPE_UNIMPLEMENTED;
+  int ret;
+  struct StdioObject *obj;
+  if (!(obj = malloc(sizeof(*obj)))) return OPE_INTERNAL_ERROR;
+  obj->file = fopen(path, "wb");
+  if (!obj->file) {
+    free(obj);
+    /* By trying to open the file first, we can recover if we can't open it. */
+    return OPE_CANNOT_OPEN;
+  }
+  ret = ope_continue_new_callbacks(enc, obj);
+  if (ret == OPE_OK) return ret;
+  fclose(obj->file);
+  free(obj);
+  return OPE_INTERNAL_ERROR;
 }
 
 /* Ends the stream and create a new file (callback-based). */

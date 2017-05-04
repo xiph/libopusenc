@@ -61,14 +61,18 @@ extern "C" {
 
 
 /* These are the "raw" request values -- they should usually not be used. */
-#define OPE_SET_DECISION_DELAY_REQUEST 14000
-#define OPE_GET_DECISION_DELAY_REQUEST 14001
-#define OPE_SET_MUXING_DELAY_REQUEST 14002
-#define OPE_GET_MUXING_DELAY_REQUEST 14003
-#define OPE_SET_COMMENT_PADDING_REQUEST 14004
-#define OPE_GET_COMMENT_PADDING_REQUEST 14005
-#define OPE_SET_SERIALNO_REQUEST 14006
-#define OPE_GET_SERIALNO_REQUEST 14007
+#define OPE_SET_DECISION_DELAY_REQUEST      14000
+#define OPE_GET_DECISION_DELAY_REQUEST      14001
+#define OPE_SET_MUXING_DELAY_REQUEST        14002
+#define OPE_GET_MUXING_DELAY_REQUEST        14003
+#define OPE_SET_COMMENT_PADDING_REQUEST     14004
+#define OPE_GET_COMMENT_PADDING_REQUEST     14005
+#define OPE_SET_SERIALNO_REQUEST            14006
+#define OPE_GET_SERIALNO_REQUEST            14007
+#define OPE_SET_PACKET_CALLBACK_REQUEST     14008
+#define OPE_GET_PACKET_CALLBACK_REQUEST     14009
+#define OPE_SET_PAGE_CALLBACK_REQUEST       14010
+#define OPE_GET_PAGE_CALLBACK_REQUEST       14011
 
 #define OPE_SET_DECISION_DELAY(x) OPE_SET_DECISION_DELAY_REQUEST, __opus_check_int(x)
 #define OPE_GET_DECISION_DELAY(x) OPE_GET_DECISION_DELAY_REQUEST, __opus_check_int_ptr(x)
@@ -78,11 +82,19 @@ extern "C" {
 #define OPE_GET_COMMENT_PADDING(x) OPE_GET_COMMENT_PADDING_REQUEST, __opus_check_int_ptr(x)
 #define OPE_SET_SERIALNO(x) OPE_SET_SERIALNO_REQUEST, __opus_check_int(x)
 #define OPE_GET_SERIALNO(x) OPE_GET_SERIALNO_REQUEST, __opus_check_int_ptr(x)
-
+/* FIXME: Add type-checking macros to these. */
+#define OPE_SET_PACKET_CALLBACK(x) OPE_SET_PACKET_CALLBACK_REQUEST, (x)
+#define OPE_GET_PACKET_CALLBACK(x) OPE_GET_PACKET_CALLBACK_REQUEST, (x)
+#define OPE_SET_PAGE_CALLBACK(x) OPE_SET_PAGE_CALLBACK_REQUEST, (x)
+#define OPE_GET_PAGE_CALLBACK(x) OPE_GET_PAGE_CALLBACK_REQUEST, (x)
 
 typedef int (*ope_write_func)(void *user_data, const unsigned char *ptr, int len);
 
 typedef int (*ope_close_func)(void *user_data);
+
+typedef int (*ope_packet_func)(void *user_data, const unsigned char *packet_ptr, int packet_len, opus_uint32 flags);
+
+typedef int (*ope_page_func)(void *user_data, int page_len, opus_uint32 flags);
 
 /** Callback functions for accessing the stream. */
 typedef struct {
@@ -134,9 +146,6 @@ OPE_EXPORT int ope_flush_header(OggOpusEnc *enc);
 
 /** Goes straight to the libopus ctl() functions. */
 OPE_EXPORT int ope_encoder_ctl(OggOpusEnc *enc, int request, ...);
-
-/** ctl()-type call for the OggOpus layer. */
-OPE_EXPORT int ope_set_params(OggOpusEnc *enc, int request, ...);
 
 # if defined(__cplusplus)
 }

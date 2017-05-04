@@ -60,16 +60,6 @@
 
 #define MAX_PACKET_SIZE (1276*8)
 
-static int oe_write_page(ogg_page *page, OpusEncCallbacks *cb, void *user_data)
-{
-   int err;
-   err = cb->write(user_data, page->header, page->header_len);
-   if (err) return -1;
-   err = cb->write(user_data, page->body, page->body_len);
-   if (err) return -1;
-   return page->header_len+page->body_len;
-}
-
 struct StdioObject {
   FILE *file;
 };
@@ -111,11 +101,26 @@ struct OggOpusEnc {
   unsigned char *chaining_keyframe;
   int chaining_keyframe_length;
   OpusEncCallbacks callbacks;
+  ope_packet_func packet_callback;
+  ope_page_func page_callback;
   OpusHeader header;
   int comment_padding;
   EncStream *streams;
   EncStream *last_stream;
 };
+
+static int oe_write_page(OggOpusEnc *enc, ogg_page *page, void *user_data)
+{
+  int length;
+  int err;
+  err = enc->callbacks.write(user_data, page->header, page->header_len);
+  if (err) return -1;
+  err = enc->callbacks.write(user_data, page->body, page->body_len);
+  if (err) return -1;
+  length = page->header_len+page->body_len;
+  if (enc->page_callback) enc->page_callback(user_data, length, 0);
+  return length;
+}
 
 static int oe_flush_page(OggOpusEnc *enc) {
   ogg_page og;
@@ -123,7 +128,7 @@ static int oe_flush_page(OggOpusEnc *enc) {
   int written = 0;
   while ( (ret = ogg_stream_flush(&enc->streams->os, &og)) ) {
     if (!ret) break;
-    ret = oe_write_page(&og, &enc->callbacks, enc->streams->user_data);
+    ret = oe_write_page(enc, &og, enc->streams->user_data);
     if (ret == -1) {
       return -1;
     }
@@ -225,6 +230,8 @@ OggOpusEnc *ope_create_callbacks(const OpusEncCallbacks *callbacks, void *user_d
   if ( (enc->streams = stream_create()) == NULL) goto fail;
   enc->streams->next = NULL;
   enc->last_stream = enc->streams;
+  enc->packet_callback = NULL;
+  enc->page_callback = NULL;
   enc->rate = rate;
   enc->channels = channels;
   enc->frame_size = 960;
@@ -366,19 +373,20 @@ static void encode_buffer(OggOpusEnc *enc) {
       cont = 0;
       if (op.e_o_s) op.granulepos=end_granule48k-enc->streams->granule_offset;
       ogg_stream_packetin(&enc->streams->os, &op);
+      if (enc->packet_callback) enc->packet_callback(enc->streams->user_data, op.packet, op.bytes, 0);
       /* FIXME: Also flush on too many segments. */
       flush_needed = op.e_o_s || enc->curr_granule - enc->last_page_granule > enc->max_ogg_delay;
       if (flush_needed) {
         while (ogg_stream_flush_fill(&enc->streams->os, &og, 255*255)) {
           if (ogg_page_packets(&og) != 0) enc->last_page_granule = ogg_page_granulepos(&og) + enc->streams->granule_offset;
-          int ret = oe_write_page(&og, &enc->callbacks, enc->streams->user_data);
+          int ret = oe_write_page(enc, &og, enc->streams->user_data);
           /* FIXME: what do we do if this fails? */
           assert(ret != -1);
         }
       } else {
         while (ogg_stream_pageout_fill(&enc->streams->os, &og, 255*255)) {
           if (ogg_page_packets(&og) != 0) enc->last_page_granule = ogg_page_granulepos(&og) + enc->streams->granule_offset;
-          int ret = oe_write_page(&og, &enc->callbacks, enc->streams->user_data);
+          int ret = oe_write_page(enc, &og, enc->streams->user_data);
           /* FIXME: what do we do if this fails? */
           assert(ret != -1);
         }
@@ -408,6 +416,7 @@ static void encode_buffer(OggOpusEnc *enc) {
           op2.packetno=enc->streams->packetno++;
           op2.granulepos=enc->curr_granule - enc->streams->granule_offset - enc->frame_size;
           ogg_stream_packetin(&enc->streams->os, &op2);
+          if (enc->packet_callback) enc->packet_callback(enc->streams->user_data, op2.packet, op2.bytes, 0);
         }
         end_granule48k = (enc->streams->end_granule*48000 + enc->rate - 1)/enc->rate + enc->global_granule_offset;
         cont = 1;
@@ -700,6 +709,19 @@ int ope_encoder_ctl(OggOpusEnc *enc, int request, ...) {
       if (enc->last_stream->header_is_frozen) return OPE_TOO_LATE;
       enc->last_stream->serialno = value;
       enc->last_stream->serialno_is_set = 1;
+      ret = OPE_OK;
+    }
+    case OPE_SET_PACKET_CALLBACK_REQUEST:
+    {
+      ope_packet_func value = va_arg(ap, ope_packet_func);
+      enc->packet_callback = value;
+      ret = OPE_OK;
+    }
+    break;
+    case OPE_SET_PAGE_CALLBACK_REQUEST:
+    {
+      ope_page_func value = va_arg(ap, ope_page_func);
+      enc->page_callback = value;
       ret = OPE_OK;
     }
     break;

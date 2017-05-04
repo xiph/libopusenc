@@ -11,6 +11,7 @@ opusinclude_HEADERS = include/opusenc.h
 
 lib_LTLIBRARIES = libopusenc.la
 libopusenc_la_SOURCES = \
+	src/ogg_packer.c \
 	src/opus_header.c \
 	src/opusenc.c \
 	src/picture.c \

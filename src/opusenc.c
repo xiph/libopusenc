@@ -278,7 +278,7 @@ fail:
   if (st) {
     opus_multistream_encoder_destroy(st);
   }
-  if (error) *error = OPE_INTERNAL_ERROR;
+  if (error) *error = OPE_ALLOC_FAIL;
   return NULL;
 }
 
@@ -535,7 +535,7 @@ int ope_chain_current(OggOpusEnc *enc) {
 int ope_continue_new_file(OggOpusEnc *enc, const char *path) {
   int ret;
   struct StdioObject *obj;
-  if (!(obj = malloc(sizeof(*obj)))) return OPE_INTERNAL_ERROR;
+  if (!(obj = malloc(sizeof(*obj)))) return OPE_ALLOC_FAIL;
   obj->file = fopen(path, "wb");
   if (!obj->file) {
     free(obj);
@@ -546,7 +546,7 @@ int ope_continue_new_file(OggOpusEnc *enc, const char *path) {
   if (ret == OPE_OK) return ret;
   fclose(obj->file);
   free(obj);
-  return OPE_INTERNAL_ERROR;
+  return ret;
 }
 
 /* Ends the stream and create a new file (callback-based). */
@@ -555,7 +555,7 @@ int ope_continue_new_callbacks(OggOpusEnc *enc, void *user_data) {
   assert(enc->streams);
   assert(enc->last_stream);
   new_stream = stream_create();
-  if (!new_stream) return OPE_INTERNAL_ERROR;
+  if (!new_stream) return OPE_ALLOC_FAIL;
   new_stream->user_data = user_data;
   enc->last_stream->next = new_stream;
   enc->last_stream = new_stream;

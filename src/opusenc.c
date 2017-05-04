@@ -650,6 +650,15 @@ int ope_encoder_ctl(OggOpusEnc *enc, int request, ...) {
       }
     }
     break;
+    case OPUS_MULTISTREAM_GET_ENCODER_STATE_REQUEST:
+    {
+      opus_int32 stream_id;
+      OpusEncoder **value;
+      stream_id = va_arg(ap, opus_int32);
+      value = va_arg(ap, OpusEncoder**);
+      ret = opus_multistream_encoder_ctl(enc->st, request, stream_id, value);
+    }
+    break;
 
     /* ****************** libopusenc-specific requests. ********************** */
     case OPE_SET_DECISION_DELAY_REQUEST:

@@ -54,4 +54,6 @@ int comment_add(char **comments, int* length, const char *tag, const char *val);
 
 void comment_pad(char **comments, int* length, int amount);
 
+int comment_replace_vendor_string(char **comments, int* length, const char *vendor_string);
+
 #endif

@@ -240,6 +240,25 @@ void comment_pad(char **comments, int* length, int amount)
     *length=newlen;
   }
 }
+
+int comment_replace_vendor_string(char **comments, int* length, const char *vendor_string)
+{
+  char* p=*comments;
+  int vendor_length;
+  int newlen;
+  int newvendor_length;
+  vendor_length=readint(p, 8);
+  newvendor_length=strlen(vendor_string);
+  newlen=*length+newvendor_length-vendor_length;
+  p=realloc(p, newlen);
+  if (p == NULL) return 1;
+  writeint(p, 8, newvendor_length);
+  memmove(p+12+newvendor_length, p+12+vendor_length, newlen-12-newvendor_length);
+  memcpy(p+12, vendor_string, newvendor_length);
+  *comments=p;
+  *length=newlen;
+  return 0;
+}
 #undef readint
 #undef writeint
 

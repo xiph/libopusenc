@@ -566,7 +566,7 @@ int ope_continue_new_callbacks(OggOpusEnc *enc, void *user_data) {
 int ope_add_comment(OggOpusEnc *enc, const char *tag, const char *val) {
   if (enc->last_stream->header_is_frozen) return OPE_TOO_LATE;
   if (enc->last_stream->stream_is_init) return OPE_TOO_LATE;
-  if (comment_add(&enc->last_stream->comment, &enc->last_stream->comment_length, tag, val)) return OPE_INTERNAL_ERROR;
+  if (comment_add(&enc->last_stream->comment, &enc->last_stream->comment_length, tag, val)) return OPE_ALLOC_FAIL;
   return OPE_OK;
 }
 
@@ -590,7 +590,7 @@ int ope_add_picture(OggOpusEnc *enc, const char *spec) {
 int ope_set_vendor_string(OggOpusEnc *enc, const char *vendor) {
   if (enc->last_stream->header_is_frozen) return OPE_TOO_LATE;
   if (enc->last_stream->stream_is_init) return OPE_TOO_LATE;
-  if (comment_replace_vendor_string(&enc->last_stream->comment, &enc->last_stream->comment_length, vendor)) return OPE_INTERNAL_ERROR;
+  if (comment_replace_vendor_string(&enc->last_stream->comment, &enc->last_stream->comment_length, vendor)) return OPE_ALLOC_FAIL;
   return OPE_OK;
 }
 
@@ -604,6 +604,7 @@ int ope_flush_header(OggOpusEnc *enc) {
 /* Goes straight to the libopus ctl() functions. */
 int ope_encoder_ctl(OggOpusEnc *enc, int request, ...) {
   int ret;
+  int translate;
   va_list ap;
   va_start(ap, request);
   switch (request) {
@@ -649,19 +650,8 @@ int ope_encoder_ctl(OggOpusEnc *enc, int request, ...) {
       }
     }
     break;
-    default:
-      ret = OPUS_UNIMPLEMENTED;
-  }
-  va_end(ap);
-  return ret;
-}
 
-/* ctl()-type call for the OggOpus layer. */
-int ope_set_params(OggOpusEnc *enc, int request, ...) {
-  int ret;
-  va_list ap;
-  va_start(ap, request);
-  switch (request) {
+    /* ****************** libopusenc-specific requests. ********************** */
     case OPE_SET_DECISION_DELAY_REQUEST:
     {
       opus_int32 value = va_arg(ap, opus_int32);
@@ -708,5 +698,14 @@ int ope_set_params(OggOpusEnc *enc, int request, ...) {
       return OPE_UNIMPLEMENTED;
   }
   va_end(ap);
+  translate = request < 14000 || (ret < 0 && ret >= -10);
+  if (translate) {
+    if (ret == OPUS_BAD_ARG) ret = OPE_BAD_ARG;
+    else if (ret == OPUS_INTERNAL_ERROR) ret = OPE_INTERNAL_ERROR;
+    else if (ret == OPUS_UNIMPLEMENTED) ret = OPE_UNIMPLEMENTED;
+    else if (ret == OPUS_ALLOC_FAIL) ret = OPE_ALLOC_FAIL;
+    else ret = OPE_INTERNAL_ERROR;
+  }
+  assert(ret == 0 || ret < -10);
   return ret;
 }

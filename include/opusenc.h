@@ -49,11 +49,16 @@ extern "C" {
 #endif
 
 #define OPE_OK 0
-#define OPE_CANNOT_OPEN -10
-#define OPE_UNIMPLEMENTED -11
-#define OPE_BAD_ARG -12
+/* Based on the relevant libopus code minus 10. */
+#define OPE_BAD_ARG -11
 #define OPE_INTERNAL_ERROR -13
-#define OPE_TOO_LATE -14
+#define OPE_UNIMPLEMENTED -15
+#define OPE_ALLOC_FAIL -17
+
+/* Specific to libopusenc. */
+#define OPE_CANNOT_OPEN -30
+#define OPE_TOO_LATE -31
+
 
 /* These are the "raw" request values -- they should usually not be used. */
 #define OPE_SET_DECISION_DELAY_REQUEST 14000

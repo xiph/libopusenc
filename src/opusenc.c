@@ -591,8 +591,7 @@ int ope_set_vendor_string(OggOpusEnc *enc, const char *vendor) {
   if (enc->last_stream->header_is_frozen) return OPE_TOO_LATE;
   if (enc->last_stream->stream_is_init) return OPE_TOO_LATE;
   if (comment_replace_vendor_string(&enc->last_stream->comment, &enc->last_stream->comment_length, vendor)) return OPE_INTERNAL_ERROR;
-  (void)vendor;
-  return OPE_UNIMPLEMENTED;
+  return OPE_OK;
 }
 
 int ope_flush_header(OggOpusEnc *enc) {

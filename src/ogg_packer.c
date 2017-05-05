@@ -28,6 +28,7 @@
 #include <string.h>
 #include <assert.h>
 
+#include <stdio.h>
 #include "ogg_packer.h"
 
 #define MAX_HEADER_SIZE (27+255)
@@ -241,13 +242,13 @@ int oggp_commit_packet(oggpacker *oggp, int bytes, oggp_uint64 granulepos, int e
   int i;
   int nb_255s;
   assert(oggp->user_buf != NULL);
-  oggp->buf_fill += bytes;
   nb_255s = bytes/255;
   if (oggp->lacing_fill-oggp->lacing_begin+nb_255s+1 > 255 ||
       (oggp->muxing_delay && granulepos - oggp->last_granule > oggp->muxing_delay)) {
     oggp_flush_page(oggp);
   }
   assert(oggp->user_buf >= &oggp->buf[oggp->buf_fill]);
+  oggp->buf_fill += bytes;
   if (oggp->lacing_fill + nb_255s + 1 > oggp->lacing_size) {
     /* FIXME: Check if it's worth shifting the lacing values. */
 
@@ -273,6 +274,7 @@ int oggp_commit_packet(oggpacker *oggp, int bytes, oggp_uint64 granulepos, int e
     oggp->lacing[oggp->lacing_fill+i] = 255;
   }
   oggp->lacing[oggp->lacing_fill+nb_255s] = bytes - 255*nb_255s;
+  oggp->lacing_fill += nb_255s + 1;
   oggp->curr_granule = granulepos;
   oggp->is_eos = eos;
   if (oggp->muxing_delay && granulepos - oggp->last_granule >= oggp->muxing_delay) {
@@ -314,6 +316,11 @@ int oggp_get_next_page(oggpacker *oggp, unsigned char **page, int *bytes) {
   int len;
   int header_size;
   oggp_uint64 granule_pos;
+  if (oggp->pages_fill == 0) {
+    *page = NULL;
+    *bytes = 0;
+    return 0;
+  }
   p = &oggp->pages[0];
   header_size = 27 + p->lacing_size;
   ptr = &oggp->buf[p->buf_pos - header_size];

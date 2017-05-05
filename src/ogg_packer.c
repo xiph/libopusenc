@@ -208,13 +208,35 @@ void oggp_set_muxing_delay(oggpacker *oggp, oggp_uint64 delay) {
   oggp->muxing_delay = delay;
 }
 
+static void shift_buffer(oggpacker *oggp) {
+  int buf_shift;
+  int lacing_shift;
+  int i;
+  buf_shift = oggp->pages_fill ? oggp->pages[0].buf_pos : oggp->buf_begin;
+  lacing_shift = oggp->pages_fill ? oggp->pages[0].lacing_pos : oggp->lacing_begin;
+  assert(lacing_shift >= 0);
+  assert(buf_shift >= 0);
+  if (4*lacing_shift > oggp->lacing_fill) {
+    memmove(&oggp->lacing[0], &oggp->lacing[lacing_shift], oggp->lacing_fill-lacing_shift);
+    for (i=0;i<oggp->pages_fill;i++) oggp->pages[i].lacing_pos -= lacing_shift;
+    oggp->lacing_fill -= lacing_shift;
+    oggp->lacing_begin -= lacing_shift;
+  }
+  if (4*buf_shift > oggp->buf_fill) {
+    memmove(&oggp->buf[0], &oggp->buf[buf_shift], oggp->buf_fill-buf_shift);
+    for (i=0;i<oggp->pages_fill;i++) oggp->pages[i].buf_pos -= buf_shift;
+    oggp->buf_fill -= buf_shift;
+    oggp->buf_begin -= buf_shift;
+  }
+}
+
 /** Get a buffer where to write the next packet. The buffer will have
     size "bytes", but fewer bytes can be written. The buffer remains valid through
     a call to oggp_close_page() or oggp_get_next_page(), but is invalidated by
     another call to oggp_get_packet_buffer() or by a call to oggp_commit_packet(). */
 unsigned char *oggp_get_packet_buffer(oggpacker *oggp, int bytes) {
   if (oggp->buf_fill + bytes > oggp->buf_size) {
-    /* FIXME: Check if it's worth shifting the buffer. */
+    shift_buffer(oggp);
 
     /* If we didn't shift the buffer or if we did and there's still not enough room, make some more. */
     if (oggp->buf_fill + bytes > oggp->buf_size) {
@@ -250,7 +272,7 @@ int oggp_commit_packet(oggpacker *oggp, int bytes, oggp_uint64 granulepos, int e
   assert(oggp->user_buf >= &oggp->buf[oggp->buf_fill]);
   oggp->buf_fill += bytes;
   if (oggp->lacing_fill + nb_255s + 1 > oggp->lacing_size) {
-    /* FIXME: Check if it's worth shifting the lacing values. */
+    shift_buffer(oggp);
 
     /* If we didn't shift the values or if we did and there's still not enough room, make some more. */
     if (oggp->lacing_fill + nb_255s + 1 > oggp->lacing_size) {

@@ -350,12 +350,14 @@ int oggp_flush_page(oggpacker *oggp) {
       cont = 1;
     } else {
       p->buf_size = oggp->buf_fill - oggp->buf_begin;
+      if (oggp->is_eos) p->flags |= 0x04;
     }
     nb_lacing -= p->lacing_size;
     oggp->lacing_begin += p->lacing_size;
     oggp->buf_begin += p->buf_size;
     p->pageno = oggp->pageno++;
-    /* FIXME: Handle bos/eos and continued pages. */
+    if (p->pageno == 0)
+      p->flags |= 0x02;
   } while (nb_lacing>0);
 
   oggp->last_granule = oggp->curr_granule;
@@ -386,10 +388,7 @@ int oggp_get_next_page(oggpacker *oggp, unsigned char **page, int *bytes) {
   /* stream structure version */
   ptr[4]=0x00;
 
-  /* FIXME: handle eos/continuation */
   ptr[5]=0x00 | p->flags;
-  if (p->pageno == 0) ptr[5] |= 0x02;
-  if (oggp->pages_fill==1 && oggp->is_eos) ptr[5] |= 0x04;
 
   granule_pos = p->granulepos;
   /* 64 bits of PCM position */

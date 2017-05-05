@@ -244,7 +244,6 @@ OggOpusEnc *ope_create_callbacks(const OpusEncCallbacks *callbacks, void *user_d
     if (error) *error = OPE_BAD_ARG;
     return NULL;
   }
-  /* FIXME: Add resampling support. */
   if (rate <= 0) {
     if (error) *error = OPE_BAD_ARG;
     return NULL;
@@ -600,6 +599,9 @@ int ope_close_and_free(OggOpusEnc *enc) {
   finalize_all_streams(enc);
   if (enc->chaining_keyframe) free(enc->chaining_keyframe);
   free(enc->buffer);
+#ifdef USE_OGGP
+  oggp_destroy(enc->oggp);
+#endif
   opus_multistream_encoder_destroy(enc->st);
   if (enc->re) speex_resampler_destroy(enc->re);
   free(enc);

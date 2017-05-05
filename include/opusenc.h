@@ -114,8 +114,11 @@ OPE_EXPORT int ope_write_float(OggOpusEnc *enc, const float *pcm, int samples_pe
 /** Add/encode any number of int16 samples to the file. */
 OPE_EXPORT int ope_write(OggOpusEnc *enc, const opus_int16 *pcm, int samples_per_channel);
 
-/** Close/finalize the stream. */
-OPE_EXPORT int ope_close_and_free(OggOpusEnc *enc);
+/** Finalizes the stream, but does not deallocate the object. */
+OPE_EXPORT int ope_drain(OggOpusEnc *enc);
+
+/** Deallocates the obect. Make sure to ope_drain() first. */
+OPE_EXPORT void ope_destroy(OggOpusEnc *enc);
 
 /** Ends the stream and create a new stream within the same file. */
 OPE_EXPORT int ope_chain_current(OggOpusEnc *enc);

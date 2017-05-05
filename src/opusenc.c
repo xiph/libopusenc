@@ -577,7 +577,7 @@ int ope_write(OggOpusEnc *enc, const opus_int16 *pcm, int samples_per_channel) {
   return OPE_OK;
 }
 
-static void finalize_all_streams(OggOpusEnc *enc) {
+int ope_drain(OggOpusEnc *enc) {
   /* FIXME: Use a better value. */
   int pad_samples = 3000;
   if (!enc->streams->stream_is_init) init_stream(enc);
@@ -589,11 +589,12 @@ static void finalize_all_streams(OggOpusEnc *enc) {
   assert(enc->buffer_end <= BUFFER_SAMPLES);
   encode_buffer(enc);
   assert(enc->streams == NULL);
+  return OPE_OK;
 }
 
 /* Close/finalize the stream. */
-int ope_close_and_free(OggOpusEnc *enc) {
-  finalize_all_streams(enc);
+void ope_destroy(OggOpusEnc *enc) {
+  /* FIXME: cleanup non-closed streams if any remain. */
   if (enc->chaining_keyframe) free(enc->chaining_keyframe);
   free(enc->buffer);
 #ifdef USE_OGGP
@@ -602,7 +603,6 @@ int ope_close_and_free(OggOpusEnc *enc) {
   opus_multistream_encoder_destroy(enc->st);
   if (enc->re) speex_resampler_destroy(enc->re);
   free(enc);
-  return OPE_OK;
 }
 
 /* Ends the stream and create a new stream within the same file. */

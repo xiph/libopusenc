@@ -30,7 +30,8 @@ int main(int argc, char **argv) {
       ope_write(enc, buf, ret);
     } else break;
   }
-  ope_close_and_free(enc);
+  ope_drain(enc);
+  ope_destroy(enc);
   fclose(fin);
   return 0;
 }

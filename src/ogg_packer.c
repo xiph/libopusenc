@@ -130,6 +130,7 @@ struct oggpacker {
   int serialno;
   unsigned char *buf;
   unsigned char *alloc_buf;
+  unsigned char *user_buf;
   int buf_size;
   int buf_fill;
   int buf_begin;
@@ -155,6 +156,7 @@ oggpacker *oggp_create(int serialno) {
   oggp->alloc_buf = NULL;
   oggp->lacing = NULL;
   oggp->pages = NULL;
+  oggp->user_buf = NULL;
 
   oggp->buf_size = MAX_PAGE_SIZE;
   oggp->lacing_size = 256;
@@ -211,7 +213,8 @@ unsigned char *oggp_get_packet_buffer(oggpacker *oggp, int bytes) {
   if (oggp->buf_fill + bytes > oggp->buf_size) {
     /* FIXME: make room somehow. */
   }
-  return &oggp->buf[oggp->buf_fill];
+  oggp->user_buf = &oggp->buf[oggp->buf_fill];
+  return oggp->user_buf;
 }
 
 /** Tells the oggpacker that the packet buffer obtained from
@@ -220,11 +223,17 @@ unsigned char *oggp_get_packet_buffer(oggpacker *oggp, int bytes) {
 int oggp_commit_packet(oggpacker *oggp, int bytes, oggp_uint64 granulepos, int eos) {
   int i;
   int nb_255s;
+  assert(oggp->user_buf != NULL);
   oggp->buf_fill += bytes;
   nb_255s = bytes/255;
   if (oggp->lacing_fill-oggp->lacing_begin+nb_255s+1 > 255 ||
       (oggp->muxing_delay && granulepos - oggp->last_granule > oggp->muxing_delay)) {
     oggp_flush_page(oggp, 1);
+  }
+  assert(oggp->user_buf >= &oggp->buf[oggp->buf_fill]);
+  /* If we moved the buffer data, update the incoming packet location. */
+  if (oggp->user_buf > &oggp->buf[oggp->buf_fill]) {
+    memmove(&oggp->buf[oggp->buf_fill], oggp->user_buf, bytes);
   }
   for (i=0;i<nb_255s;i++) {
     oggp->lacing[oggp->lacing_fill+i] = 255;

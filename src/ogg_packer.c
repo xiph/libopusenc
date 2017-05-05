@@ -287,25 +287,40 @@ int oggp_commit_packet(oggpacker *oggp, int bytes, oggp_uint64 granulepos, int e
     If there is too much data for one page, all page continuations will be closed too. */
 int oggp_flush_page(oggpacker *oggp) {
   oggp_page *p;
+  int cont = 0;
+  int nb_lacing;
   if (oggp->lacing_fill == oggp->lacing_begin) {
     return 1;
   }
-  /* FIXME: Check we have a free page. */
-  /* FIXME: Check there is at least one packet. */
-  p = &oggp->pages[oggp->pages_fill++];
-  p->granulepos = oggp->curr_granule;
+  nb_lacing = oggp->lacing_fill - oggp->lacing_begin;
+  do {
+    assert(oggp->pages_fill < oggp->pages_size);
+    /* FIXME: Check we have a free page. */
+    p = &oggp->pages[oggp->pages_fill++];
+    p->granulepos = oggp->curr_granule;
 
-  p->buf_pos = oggp->buf_begin;
-  p->buf_size = oggp->buf_fill - oggp->buf_begin;
-  p->lacing_pos = oggp->lacing_begin;
-  p->lacing_size = oggp->lacing_fill - oggp->lacing_begin;
-  p->pageno = oggp->pageno;
-  /* FIXME: Handle bos/eos and continued pages. */
-  p->flags = 0;
+    p->lacing_pos = oggp->lacing_begin;
+    p->lacing_size = nb_lacing;
+    p->flags = cont;
+    p->buf_pos = oggp->buf_begin;
+    if (p->lacing_size > 255) {
+      int bytes=0;
+      int i;
+      for (i=0;i<255;i++) bytes += oggp->lacing[oggp->lacing_begin+1];
+      p->buf_size = bytes;
+      p->lacing_size = 255;
+      p->granulepos = -1;
+      cont = 1;
+    } else {
+      p->buf_size = oggp->buf_fill - oggp->buf_begin;
+    }
+    nb_lacing -= p->lacing_size;
+    oggp->lacing_begin += p->lacing_size;
+    oggp->buf_begin += p->buf_size;
+    p->pageno = oggp->pageno++;
+    /* FIXME: Handle bos/eos and continued pages. */
+  } while (nb_lacing>0);
 
-  oggp->buf_begin = oggp->buf_fill;
-  oggp->lacing_begin = oggp->lacing_fill;
-  oggp->pageno++;
   oggp->last_granule = oggp->curr_granule;
   return 0;
 }
@@ -335,7 +350,7 @@ int oggp_get_next_page(oggpacker *oggp, unsigned char **page, int *bytes) {
   ptr[4]=0x00;
 
   /* FIXME: handle eos/continuation */
-  ptr[5]=0x00;
+  ptr[5]=0x00 | p->flags;
   if (p->pageno == 0) ptr[5] |= 0x02;
   if (oggp->pages_fill==1 && oggp->is_eos) ptr[5] |= 0x04;
 

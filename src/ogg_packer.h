@@ -33,6 +33,9 @@ extern "C" {
 # endif
 
 typedef unsigned long long oggp_uint64;
+typedef unsigned oggp_uint32;
+typedef int oggp_int32;
+
 typedef struct oggpacker oggpacker;
 
 /** Allocates an oggpacker object */

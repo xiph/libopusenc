@@ -287,6 +287,9 @@ int oggp_commit_packet(oggpacker *oggp, int bytes, oggp_uint64 granulepos, int e
     If there is too much data for one page, all page continuations will be closed too. */
 int oggp_flush_page(oggpacker *oggp) {
   oggp_page *p;
+  if (oggp->lacing_fill == oggp->lacing_begin) {
+    return 1;
+  }
   /* FIXME: Check we have a free page. */
   /* FIXME: Check there is at least one packet. */
   p = &oggp->pages[oggp->pages_fill++];
@@ -368,7 +371,7 @@ int oggp_get_next_page(oggpacker *oggp, unsigned char **page, int *bytes) {
   *bytes = len;
   oggp->pages_fill--;
   memmove(&oggp->pages[0], &oggp->pages[1], oggp->pages_fill);
-  return 0;
+  return 1;
 }
 
 /** Creates a new (chained) stream. This closes all outstanding pages. These

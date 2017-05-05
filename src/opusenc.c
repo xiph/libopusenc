@@ -61,6 +61,8 @@
 
 #define MAX_PACKET_SIZE (1276*8)
 
+#define USE_OGGP
+
 struct StdioObject {
   FILE *file;
 };
@@ -129,20 +131,23 @@ static int oe_flush_page(OggOpusEnc *enc) {
   int ret;
   int written = 0;
 
+#ifdef USE_OGGP
   oggp_flush_page(enc->oggp);
   {
     unsigned char *page;
     int len;
     while (oggp_get_next_page(enc->oggp, &page, &len)) {
-      fwrite(page, 1, len, stdout);
-      fflush(stdout);
+      enc->callbacks.write(enc->streams->user_data, page, len);
     }
   }
+#endif
 
   while ( (ret = ogg_stream_flush_fill(&enc->streams->os, &og, 255*255))) {
     if (!ret) break;
     if (ogg_page_packets(&og) != 0) enc->last_page_granule = ogg_page_granulepos(&og) + enc->streams->granule_offset;
+#ifndef USE_OGGP
     ret = oe_write_page(enc, &og, enc->streams->user_data);
+#endif
     if (ret == -1) {
       return -1;
     }
@@ -311,8 +316,11 @@ static void init_stream(OggOpusEnc *enc) {
   }
 
   if (enc->oggp != NULL) oggp_chain(enc->oggp, enc->streams->serialno);
-  else enc->oggp = oggp_create(enc->streams->serialno);
-  /* FIXME: How the hell do we handle failure here? */
+  else {
+    enc->oggp = oggp_create(enc->streams->serialno);
+    /* FIXME: How the hell do we handle failure here? */
+    oggp_set_muxing_delay(enc->oggp, enc->max_ogg_delay);
+  }
 
   if (ogg_stream_init(&enc->streams->os, enc->streams->serialno) == -1) {
     assert(0);
@@ -411,7 +419,7 @@ static void encode_buffer(OggOpusEnc *enc) {
       }
       if (enc->packet_callback) enc->packet_callback(enc->streams->user_data, op.packet, op.bytes, 0);
       /* FIXME: Also flush on too many segments. */
-      flush_needed = op.e_o_s || enc->curr_granule - enc->last_page_granule > enc->max_ogg_delay;
+      flush_needed = op.e_o_s || enc->curr_granule - enc->last_page_granule >= enc->max_ogg_delay;
       if (flush_needed) {
 #if 1
         oe_flush_page(enc);
@@ -744,6 +752,7 @@ int ope_encoder_ctl(OggOpusEnc *enc, int request, ...) {
         break;
       }
       enc->max_ogg_delay = value;
+      oggp_set_muxing_delay(enc->oggp, enc->max_ogg_delay);
       ret = OPE_OK;
     }
     break;

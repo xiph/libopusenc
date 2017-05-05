@@ -108,11 +108,17 @@ OPE_EXPORT OggOpusEnc *ope_create_file(const char *path, int rate, int channels,
 OPE_EXPORT OggOpusEnc *ope_create_callbacks(const OpusEncCallbacks *callbacks, void *user_data,
     int rate, int channels, int family, int *error);
 
+/** Create a new OggOpus stream, pulling one page at a time. */
+OPE_EXPORT OggOpusEnc *ope_create_pull(int rate, int channels, int family, int *error);
+
 /** Add/encode any number of float samples to the file. */
 OPE_EXPORT int ope_write_float(OggOpusEnc *enc, const float *pcm, int samples_per_channel);
 
 /** Add/encode any number of int16 samples to the file. */
 OPE_EXPORT int ope_write(OggOpusEnc *enc, const opus_int16 *pcm, int samples_per_channel);
+
+/** Get the next page from the stream. Returns 1 if there is a page available, 0 if not. */
+OPE_EXPORT int ope_get_page(OggOpusEnc *enc, unsigned char **page, int *len, int flush);
 
 /** Finalizes the stream, but does not deallocate the object. */
 OPE_EXPORT int ope_drain(OggOpusEnc *enc);

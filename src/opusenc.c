@@ -93,6 +93,7 @@ struct OggOpusEnc {
 #ifdef USE_OGGP
   oggpacker *oggp;
 #endif
+  int pull_api;
   int rate;
   int channels;
   float *buffer;
@@ -126,7 +127,7 @@ static void output_pages(OggOpusEnc *enc) {
 }
 static void oe_flush_page(OggOpusEnc *enc) {
   oggp_flush_page(enc->oggp);
-  output_pages(enc);
+  if (!enc->pull_api) output_pages(enc);
 }
 
 #else
@@ -255,6 +256,7 @@ OggOpusEnc *ope_create_callbacks(const OpusEncCallbacks *callbacks, void *user_d
 #ifdef USE_OGGP
   enc->oggp = NULL;
 #endif
+  enc->pull_api = 0;
   enc->packet_callback = NULL;
   enc->rate = rate;
   enc->channels = channels;
@@ -311,6 +313,13 @@ fail:
   }
   if (error) *error = OPE_ALLOC_FAIL;
   return NULL;
+}
+
+/* Create a new OggOpus stream, pulling one page at a time. */
+OPE_EXPORT OggOpusEnc *ope_create_pull(int rate, int channels, int family, int *error) {
+  OggOpusEnc *enc = ope_create_callbacks(NULL, NULL, rate, channels, family, error);
+  enc->pull_api = 1;
+  return enc;
 }
 
 static void init_stream(OggOpusEnc *enc) {
@@ -436,7 +445,7 @@ static void encode_buffer(OggOpusEnc *enc) {
 #ifdef USE_OGGP
       flush_needed = op.e_o_s;
       if (flush_needed) oe_flush_page(enc);
-      else output_pages(enc);
+      else if (!enc->pull_api) output_pages(enc);
 #else
       flush_needed = op.e_o_s || enc->curr_granule - enc->last_page_granule >= enc->max_ogg_delay;
       if (flush_needed) {
@@ -577,6 +586,15 @@ int ope_write(OggOpusEnc *enc, const opus_int16 *pcm, int samples_per_channel) {
   return OPE_OK;
 }
 
+/* Get the next page from the stream. Returns 1 if there is a page available, 0 if not. */
+OPE_EXPORT int ope_get_page(OggOpusEnc *enc, unsigned char **page, int *len, int flush) {
+  if (!enc->pull_api) return 0;
+  else {
+    if (flush) oggp_flush_page(enc->oggp);
+    return oggp_get_next_page(enc->oggp, page, len);
+  }
+}
+
 int ope_drain(OggOpusEnc *enc) {
   /* FIXME: Use a better value. */
   int pad_samples = 3000;
@@ -592,7 +610,6 @@ int ope_drain(OggOpusEnc *enc) {
   return OPE_OK;
 }
 
-/* Close/finalize the stream. */
 void ope_destroy(OggOpusEnc *enc) {
   /* FIXME: cleanup non-closed streams if any remain. */
   if (enc->chaining_keyframe) free(enc->chaining_keyframe);

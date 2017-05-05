@@ -121,16 +121,6 @@ static int oe_write_page(OggOpusEnc *enc, ogg_page *page, void *user_data)
   if (err) return -1;
   length = page->header_len+page->body_len;
   if (enc->page_callback) enc->page_callback(user_data, length, 0);
-
-  {
-    unsigned char *page;
-    int len;
-    if (oggp_get_next_page(enc->oggp, &page, &len)) {
-      fwrite(page, 1, len, stdout);
-      fflush(stdout);
-    }
-  }
-
   return length;
 }
 
@@ -140,9 +130,18 @@ static int oe_flush_page(OggOpusEnc *enc) {
   int written = 0;
 
   oggp_flush_page(enc->oggp);
+  {
+    unsigned char *page;
+    int len;
+    while (oggp_get_next_page(enc->oggp, &page, &len)) {
+      fwrite(page, 1, len, stdout);
+      fflush(stdout);
+    }
+  }
 
-  while ( (ret = ogg_stream_flush(&enc->streams->os, &og)) ) {
+  while ( (ret = ogg_stream_flush_fill(&enc->streams->os, &og, 255*255))) {
     if (!ret) break;
+    if (ogg_page_packets(&og) != 0) enc->last_page_granule = ogg_page_granulepos(&og) + enc->streams->granule_offset;
     ret = oe_write_page(enc, &og, enc->streams->user_data);
     if (ret == -1) {
       return -1;
@@ -412,13 +411,25 @@ static void encode_buffer(OggOpusEnc *enc) {
       /* FIXME: Also flush on too many segments. */
       flush_needed = op.e_o_s || enc->curr_granule - enc->last_page_granule > enc->max_ogg_delay;
       if (flush_needed) {
+#if 1
+        oe_flush_page(enc);
+#else
         oggp_flush_page(enc->oggp);
+        {
+          unsigned char *page;
+          int len;
+          while (oggp_get_next_page(enc->oggp, &page, &len)) {
+            fwrite(page, 1, len, stdout);
+            fflush(stdout);
+          }
+        }
         while (ogg_stream_flush_fill(&enc->streams->os, &og, 255*255)) {
           if (ogg_page_packets(&og) != 0) enc->last_page_granule = ogg_page_granulepos(&og) + enc->streams->granule_offset;
           int ret = oe_write_page(enc, &og, enc->streams->user_data);
           /* FIXME: what do we do if this fails? */
           assert(ret != -1);
         }
+#endif
       } else {
         while (ogg_stream_pageout_fill(&enc->streams->os, &og, 255*255)) {
           if (ogg_page_packets(&og) != 0) enc->last_page_granule = ogg_page_granulepos(&og) + enc->streams->granule_offset;

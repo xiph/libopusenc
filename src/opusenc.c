@@ -121,7 +121,13 @@ static void output_pages(OggOpusEnc *enc) {
     enc->callbacks.write(enc->streams->user_data, page, len);
   }
 }
+static void oe_flush_page(OggOpusEnc *enc) {
+  oggp_flush_page(enc->oggp);
+  output_pages(enc);
+}
+
 #else
+
 static int oe_write_page(OggOpusEnc *enc, ogg_page *page, void *user_data)
 {
   int length;
@@ -134,31 +140,21 @@ static int oe_write_page(OggOpusEnc *enc, ogg_page *page, void *user_data)
   if (enc->page_callback) enc->page_callback(user_data, length, 0);
   return length;
 }
-#endif
 
-static int oe_flush_page(OggOpusEnc *enc) {
+static void oe_flush_page(OggOpusEnc *enc) {
   ogg_page og;
   int ret;
-  int written = 0;
-
-#ifdef USE_OGGP
-  oggp_flush_page(enc->oggp);
-  output_pages(enc);
-#endif
 
   while ( (ret = ogg_stream_flush_fill(&enc->streams->os, &og, 255*255))) {
-    if (!ret) break;
     if (ogg_page_packets(&og) != 0) enc->last_page_granule = ogg_page_granulepos(&og) + enc->streams->granule_offset;
-#ifndef USE_OGGP
     ret = oe_write_page(enc, &og, enc->streams->user_data);
-#endif
     if (ret == -1) {
-      return -1;
+      return;
     }
-    written += ret;
   }
-  return written;
 }
+#endif
+
 
 int stdio_write(void *user_data, const unsigned char *ptr, int len) {
   struct StdioObject *obj = (struct StdioObject*)user_data;

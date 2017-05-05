@@ -110,7 +110,6 @@ struct OggOpusEnc {
   int chaining_keyframe_length;
   OpusEncCallbacks callbacks;
   ope_packet_func packet_callback;
-  ope_page_func page_callback;
   OpusHeader header;
   int comment_padding;
   EncStream *streams;
@@ -141,7 +140,6 @@ static int oe_write_page(OggOpusEnc *enc, ogg_page *page, void *user_data)
   err = enc->callbacks.write(user_data, page->body, page->body_len);
   if (err) return -1;
   length = page->header_len+page->body_len;
-  if (enc->page_callback) enc->page_callback(user_data, length, 0);
   return length;
 }
 
@@ -258,7 +256,6 @@ OggOpusEnc *ope_create_callbacks(const OpusEncCallbacks *callbacks, void *user_d
   enc->oggp = NULL;
 #endif
   enc->packet_callback = NULL;
-  enc->page_callback = NULL;
   enc->rate = rate;
   enc->channels = channels;
   enc->frame_size = 960;
@@ -792,13 +789,6 @@ int ope_encoder_ctl(OggOpusEnc *enc, int request, ...) {
     {
       ope_packet_func value = va_arg(ap, ope_packet_func);
       enc->packet_callback = value;
-      ret = OPE_OK;
-    }
-    break;
-    case OPE_SET_PAGE_CALLBACK_REQUEST:
-    {
-      ope_page_func value = va_arg(ap, ope_page_func);
-      enc->page_callback = value;
       ret = OPE_OK;
     }
     break;

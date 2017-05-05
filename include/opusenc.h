@@ -71,8 +71,6 @@ extern "C" {
 #define OPE_GET_SERIALNO_REQUEST            14007
 #define OPE_SET_PACKET_CALLBACK_REQUEST     14008
 #define OPE_GET_PACKET_CALLBACK_REQUEST     14009
-#define OPE_SET_PAGE_CALLBACK_REQUEST       14010
-#define OPE_GET_PAGE_CALLBACK_REQUEST       14011
 
 #define OPE_SET_DECISION_DELAY(x) OPE_SET_DECISION_DELAY_REQUEST, __opus_check_int(x)
 #define OPE_GET_DECISION_DELAY(x) OPE_GET_DECISION_DELAY_REQUEST, __opus_check_int_ptr(x)
@@ -85,16 +83,12 @@ extern "C" {
 /* FIXME: Add type-checking macros to these. */
 #define OPE_SET_PACKET_CALLBACK(x) OPE_SET_PACKET_CALLBACK_REQUEST, (x)
 #define OPE_GET_PACKET_CALLBACK(x) OPE_GET_PACKET_CALLBACK_REQUEST, (x)
-#define OPE_SET_PAGE_CALLBACK(x) OPE_SET_PAGE_CALLBACK_REQUEST, (x)
-#define OPE_GET_PAGE_CALLBACK(x) OPE_GET_PAGE_CALLBACK_REQUEST, (x)
 
 typedef int (*ope_write_func)(void *user_data, const unsigned char *ptr, int len);
 
 typedef int (*ope_close_func)(void *user_data);
 
 typedef int (*ope_packet_func)(void *user_data, const unsigned char *packet_ptr, int packet_len, opus_uint32 flags);
-
-typedef int (*ope_page_func)(void *user_data, int page_len, opus_uint32 flags);
 
 /** Callback functions for accessing the stream. */
 typedef struct {

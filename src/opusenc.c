@@ -61,7 +61,7 @@
 
 #define MAX_PACKET_SIZE (1276*8)
 
-//#define USE_OGGP
+#define USE_OGGP
 
 struct StdioObject {
   FILE *file;

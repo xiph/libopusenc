@@ -244,6 +244,7 @@ OggOpusEnc *ope_create_callbacks(const OpusEncCallbacks *callbacks, void *user_d
   if ( (enc->streams = stream_create()) == NULL) goto fail;
   enc->streams->next = NULL;
   enc->last_stream = enc->streams;
+  enc->oggp = NULL;
   enc->packet_callback = NULL;
   enc->page_callback = NULL;
   enc->rate = rate;
@@ -309,7 +310,8 @@ static void init_stream(OggOpusEnc *enc) {
     enc->streams->serialno = rand();
   }
 
-  enc->oggp = oggp_create(enc->streams->serialno);
+  if (enc->oggp != NULL) oggp_chain(enc->oggp, enc->streams->serialno);
+  else enc->oggp = oggp_create(enc->streams->serialno);
   /* FIXME: How the hell do we handle failure here? */
 
   if (ogg_stream_init(&enc->streams->os, enc->streams->serialno) == -1) {
@@ -463,6 +465,12 @@ static void encode_buffer(OggOpusEnc *enc) {
           op2.packetno=enc->streams->packetno++;
           op2.granulepos=enc->curr_granule - enc->streams->granule_offset - enc->frame_size;
           ogg_stream_packetin(&enc->streams->os, &op2);
+          {
+            unsigned char *p;
+            p = oggp_get_packet_buffer(enc->oggp, MAX_PACKET_SIZE);
+            memcpy(p, enc->chaining_keyframe, enc->chaining_keyframe_length);
+            oggp_commit_packet(enc->oggp, enc->chaining_keyframe_length, op2.granulepos, 0);
+          }
           if (enc->packet_callback) enc->packet_callback(enc->streams->user_data, op2.packet, op2.bytes, 0);
         }
         end_granule48k = (enc->streams->end_granule*48000 + enc->rate - 1)/enc->rate + enc->global_granule_offset;

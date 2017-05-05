@@ -26,6 +26,8 @@
 
 #include <stdlib.h>
 #include <string.h>
+#include <assert.h>
+
 #include "ogg_packer.h"
 
 #define MAX_HEADER_SIZE (27+255)
@@ -162,7 +164,7 @@ oggpacker *oggp_create(int serialno) {
   oggp->lacing_size = 256;
   oggp->pages_size = 10;
 
-  oggp->alloc_buf = malloc(oggp->buf_size);
+  oggp->alloc_buf = malloc(oggp->buf_size + MAX_HEADER_SIZE);
   oggp->lacing = malloc(oggp->lacing_size);
   oggp->pages = malloc(oggp->pages_size * sizeof(oggp->pages[0]));
   if (!oggp->alloc_buf || !oggp->lacing || !oggp->pages) goto fail;
@@ -211,7 +213,22 @@ void oggp_set_muxing_delay(oggpacker *oggp, oggp_uint64 delay) {
     another call to oggp_get_packet_buffer() or by a call to oggp_commit_packet(). */
 unsigned char *oggp_get_packet_buffer(oggpacker *oggp, int bytes) {
   if (oggp->buf_fill + bytes > oggp->buf_size) {
-    /* FIXME: make room somehow. */
+    /* FIXME: Check if it's worth shifting the buffer. */
+
+    /* If we didn't shift the buffer or if we did and there's still not enough room, make some more. */
+    if (oggp->buf_fill + bytes > oggp->buf_size) {
+      int newsize;
+      unsigned char *newbuf;
+      newsize = oggp->buf_fill + bytes + MAX_HEADER_SIZE;
+      newbuf = realloc(oggp->alloc_buf, oggp->buf_fill + bytes + MAX_HEADER_SIZE);
+      if (newbuf != NULL) {
+        oggp->alloc_buf = newbuf;
+        oggp->buf_size = newsize;
+        oggp->buf = oggp->alloc_buf + MAX_HEADER_SIZE;
+      } else {
+        return NULL;
+      }
+    }
   }
   oggp->user_buf = &oggp->buf[oggp->buf_fill];
   return oggp->user_buf;
@@ -228,7 +245,7 @@ int oggp_commit_packet(oggpacker *oggp, int bytes, oggp_uint64 granulepos, int e
   nb_255s = bytes/255;
   if (oggp->lacing_fill-oggp->lacing_begin+nb_255s+1 > 255 ||
       (oggp->muxing_delay && granulepos - oggp->last_granule > oggp->muxing_delay)) {
-    oggp_flush_page(oggp, 1);
+    oggp_flush_page(oggp);
   }
   assert(oggp->user_buf >= &oggp->buf[oggp->buf_fill]);
   /* If we moved the buffer data, update the incoming packet location. */
@@ -242,16 +259,14 @@ int oggp_commit_packet(oggpacker *oggp, int bytes, oggp_uint64 granulepos, int e
   oggp->curr_granule = granulepos;
   oggp->is_eos = eos;
   if (oggp->muxing_delay && granulepos - oggp->last_granule >= oggp->muxing_delay) {
-    oggp_flush_page(oggp, 1);
+    oggp_flush_page(oggp);
   }
   return 0;
 }
 
 /** Create a page from the data written so far (and not yet part of a previous page).
-    If there is too much data for one page, then either:
-    1) all page continuations will be closed too (close_cont=1)
-    2) all but the last page continuations will be closed (close_cont=0)*/
-int oggp_flush_page(oggpacker *oggp, int close_cont) {
+    If there is too much data for one page, all page continuations will be closed too. */
+int oggp_flush_page(oggpacker *oggp) {
   oggp_page *p;
   /* FIXME: Check we have a free page. */
   /* FIXME: Check there is at least one packet. */
@@ -265,9 +280,11 @@ int oggp_flush_page(oggpacker *oggp, int close_cont) {
   p->pageno = oggp->pageno;
   /* FIXME: Handle bos/eos and continued pages. */
   p->flags = 0;
+
+  oggp->buf_begin = oggp->buf_fill;
+  oggp->lacing_begin = oggp->lacing_fill;
   oggp->pageno++;
   oggp->last_granule = oggp->curr_granule;
-  (void)close_cont;
   return 0;
 }
 
@@ -333,7 +350,7 @@ int oggp_get_next_page(oggpacker *oggp, unsigned char **page, int *bytes) {
 /** Creates a new (chained) stream. This closes all outstanding pages. These
     pages remain available with oggp_get_next_page(). */
 int oggp_chain(oggpacker *oggp, int serialno) {
-  oggp_flush_page(oggp, 1);
+  oggp_flush_page(oggp);
   oggp->serialno = serialno;
   oggp->curr_granule = 0;
   oggp->last_granule = 0;

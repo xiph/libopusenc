@@ -60,10 +60,8 @@ unsigned char *oggp_get_packet_buffer(oggpacker *oggp, int bytes);
 int oggp_commit_packet(oggpacker *oggp, int bytes, oggp_uint64 granulepos, int eos);
 
 /** Create a page from the data written so far (and not yet part of a previous page).
-    If there is too much data for one page, then either:
-    1) all page continuations will be closed too (close_cont=1)
-    2) all but the last page continuations will be closed (close_cont=0)*/
-int oggp_flush_page(oggpacker *oggp, int close_cont);
+    If there is too much data for one page, then all page continuations will be closed too. */
+int oggp_flush_page(oggpacker *oggp);
 
 /** Get a pointer to the contents of the next available page. Pointer is
     invalidated on the next call to oggp_get_next_page(). */

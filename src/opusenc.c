@@ -43,6 +43,7 @@
 #include "opus_header.h"
 #include "speex_resampler.h"
 #include "picture.h"
+#include "ogg_packer.h"
 
 #define MAX_CHANNELS 8
 
@@ -85,6 +86,7 @@ struct EncStream {
 
 struct OggOpusEnc {
   OpusMSEncoder *st;
+  oggpacker *oggp;
   int rate;
   int channels;
   float *buffer;
@@ -119,6 +121,16 @@ static int oe_write_page(OggOpusEnc *enc, ogg_page *page, void *user_data)
   if (err) return -1;
   length = page->header_len+page->body_len;
   if (enc->page_callback) enc->page_callback(user_data, length, 0);
+
+  {
+    unsigned char *page;
+    int len;
+    if (oggp_get_next_page(enc->oggp, &page, &len)) {
+      fwrite(page, 1, len, stdout);
+      fflush(stdout);
+    }
+  }
+
   return length;
 }
 
@@ -126,6 +138,9 @@ static int oe_flush_page(OggOpusEnc *enc) {
   ogg_page og;
   int ret;
   int written = 0;
+
+  oggp_flush_page(enc->oggp);
+
   while ( (ret = ogg_stream_flush(&enc->streams->os, &og)) ) {
     if (!ret) break;
     ret = oe_write_page(enc, &og, enc->streams->user_data);
@@ -295,6 +310,9 @@ static void init_stream(OggOpusEnc *enc) {
     enc->streams->serialno = rand();
   }
 
+  enc->oggp = oggp_create(enc->streams->serialno);
+  /* FIXME: How the hell do we handle failure here? */
+
   if (ogg_stream_init(&enc->streams->os, enc->streams->serialno) == -1) {
     assert(0);
     /* FIXME: How the hell do we handle that? */
@@ -317,6 +335,12 @@ static void init_stream(OggOpusEnc *enc) {
     op.granulepos=0;
     op.packetno=0;
     ogg_stream_packetin(&enc->streams->os, &op);
+
+    unsigned char *p;
+    p = oggp_get_packet_buffer(enc->oggp, 276);
+    memcpy(p, header_data, packet_size);
+    oggp_commit_packet(enc->oggp, packet_size, 0, 0);
+
     oe_flush_page(enc);
 
     op.packet = (unsigned char *)enc->streams->comment;
@@ -326,6 +350,11 @@ static void init_stream(OggOpusEnc *enc) {
     op.granulepos = 0;
     op.packetno = 1;
     ogg_stream_packetin(&enc->streams->os, &op);
+
+    p = oggp_get_packet_buffer(enc->oggp, enc->streams->comment_length);
+    memcpy(p, enc->streams->comment, enc->streams->comment_length);
+    oggp_commit_packet(enc->oggp, enc->streams->comment_length, 0, 0);
+
     oe_flush_page(enc);
   }
   enc->streams->stream_is_init = 1;
@@ -373,10 +402,17 @@ static void encode_buffer(OggOpusEnc *enc) {
       cont = 0;
       if (op.e_o_s) op.granulepos=end_granule48k-enc->streams->granule_offset;
       ogg_stream_packetin(&enc->streams->os, &op);
+      {
+        unsigned char *p;
+        p = oggp_get_packet_buffer(enc->oggp, MAX_PACKET_SIZE);
+        memcpy(p, packet, nbBytes);
+        oggp_commit_packet(enc->oggp, nbBytes, op.granulepos, op.e_o_s);
+      }
       if (enc->packet_callback) enc->packet_callback(enc->streams->user_data, op.packet, op.bytes, 0);
       /* FIXME: Also flush on too many segments. */
       flush_needed = op.e_o_s || enc->curr_granule - enc->last_page_granule > enc->max_ogg_delay;
       if (flush_needed) {
+        oggp_flush_page(enc->oggp);
         while (ogg_stream_flush_fill(&enc->streams->os, &og, 255*255)) {
           if (ogg_page_packets(&og) != 0) enc->last_page_granule = ogg_page_granulepos(&og) + enc->streams->granule_offset;
           int ret = oe_write_page(enc, &og, enc->streams->user_data);

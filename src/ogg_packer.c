@@ -163,7 +163,7 @@ oggpacker *oggp_create(int serialno) {
 
   oggp->buf_size = MAX_PAGE_SIZE;
   oggp->lacing_size = 256;
-  oggp->pages_size = 10;
+  oggp->pages_size = 32;
 
   oggp->alloc_buf = malloc(oggp->buf_size + MAX_HEADER_SIZE);
   oggp->lacing = malloc(oggp->lacing_size);
@@ -386,7 +386,7 @@ int oggp_get_next_page(oggpacker *oggp, unsigned char **page, int *bytes) {
   *page = ptr;
   *bytes = len;
   oggp->pages_fill--;
-  memmove(&oggp->pages[0], &oggp->pages[1], oggp->pages_fill);
+  memmove(&oggp->pages[0], &oggp->pages[1], oggp->pages_fill*sizeof(oggp_page));
   return 1;
 }
 

@@ -220,7 +220,7 @@ unsigned char *oggp_get_packet_buffer(oggpacker *oggp, int bytes) {
       int newsize;
       unsigned char *newbuf;
       newsize = oggp->buf_fill + bytes + MAX_HEADER_SIZE;
-      newbuf = realloc(oggp->alloc_buf, oggp->buf_fill + bytes + MAX_HEADER_SIZE);
+      newbuf = realloc(oggp->alloc_buf, newsize);
       if (newbuf != NULL) {
         oggp->alloc_buf = newbuf;
         oggp->buf_size = newsize;
@@ -248,6 +248,23 @@ int oggp_commit_packet(oggpacker *oggp, int bytes, oggp_uint64 granulepos, int e
     oggp_flush_page(oggp);
   }
   assert(oggp->user_buf >= &oggp->buf[oggp->buf_fill]);
+  if (oggp->lacing_fill + nb_255s + 1 > oggp->lacing_size) {
+    /* FIXME: Check if it's worth shifting the lacing values. */
+
+    /* If we didn't shift the values or if we did and there's still not enough room, make some more. */
+    if (oggp->lacing_fill + nb_255s + 1 > oggp->lacing_size) {
+      int newsize;
+      unsigned char *newbuf;
+      newsize = oggp->lacing_fill + nb_255s + 1;
+      newbuf = realloc(oggp->lacing, newsize);
+      if (newbuf != NULL) {
+        oggp->lacing = newbuf;
+        oggp->lacing_size = newsize;
+      } else {
+        return 1;
+      }
+    }
+  }
   /* If we moved the buffer data, update the incoming packet location. */
   if (oggp->user_buf > &oggp->buf[oggp->buf_fill]) {
     memmove(&oggp->buf[oggp->buf_fill], oggp->user_buf, bytes);
@@ -289,7 +306,7 @@ int oggp_flush_page(oggpacker *oggp) {
 }
 
 /** Get a pointer to the contents of the next available page. Pointer is
-    invalidated on the next call to oggp_get_next_page(). */
+    invalidated on the next call to oggp_get_next_page() or oggp_commit_packet(). */
 int oggp_get_next_page(oggpacker *oggp, unsigned char **page, int *bytes) {
   oggp_page *p;
   int i;

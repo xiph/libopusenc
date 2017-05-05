@@ -64,7 +64,7 @@ int oggp_commit_packet(oggpacker *oggp, int bytes, oggp_uint64 granulepos, int e
 int oggp_flush_page(oggpacker *oggp);
 
 /** Get a pointer to the contents of the next available page. Pointer is
-    invalidated on the next call to oggp_get_next_page(). */
+    invalidated on the next call to oggp_get_next_page() or oggp_commit_packet(). */
 int oggp_get_next_page(oggpacker *oggp, unsigned char **page, int *bytes);
 
 /** Creates a new (chained) stream. This closes all outstanding pages. These

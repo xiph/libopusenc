@@ -113,6 +113,15 @@ struct OggOpusEnc {
   EncStream *last_stream;
 };
 
+#ifdef USE_OGGP
+static void output_pages(OggOpusEnc *enc) {
+  unsigned char *page;
+  int len;
+  while (oggp_get_next_page(enc->oggp, &page, &len)) {
+    enc->callbacks.write(enc->streams->user_data, page, len);
+  }
+}
+#else
 static int oe_write_page(OggOpusEnc *enc, ogg_page *page, void *user_data)
 {
   int length;
@@ -125,6 +134,7 @@ static int oe_write_page(OggOpusEnc *enc, ogg_page *page, void *user_data)
   if (enc->page_callback) enc->page_callback(user_data, length, 0);
   return length;
 }
+#endif
 
 static int oe_flush_page(OggOpusEnc *enc) {
   ogg_page og;
@@ -133,13 +143,7 @@ static int oe_flush_page(OggOpusEnc *enc) {
 
 #ifdef USE_OGGP
   oggp_flush_page(enc->oggp);
-  {
-    unsigned char *page;
-    int len;
-    while (oggp_get_next_page(enc->oggp, &page, &len)) {
-      enc->callbacks.write(enc->streams->user_data, page, len);
-    }
-  }
+  output_pages(enc);
 #endif
 
   while ( (ret = ogg_stream_flush_fill(&enc->streams->os, &og, 255*255))) {
@@ -384,7 +388,9 @@ static void encode_buffer(OggOpusEnc *enc) {
     opus_int32 pred;
     int flush_needed;
     ogg_packet op;
+#ifndef USE_OGGP
     ogg_page og;
+#endif
     int nbBytes;
     unsigned char packet[MAX_PACKET_SIZE];
     int is_keyframe=0;
@@ -419,27 +425,14 @@ static void encode_buffer(OggOpusEnc *enc) {
       }
       if (enc->packet_callback) enc->packet_callback(enc->streams->user_data, op.packet, op.bytes, 0);
       /* FIXME: Also flush on too many segments. */
+#ifdef USE_OGGP
+      flush_needed = op.e_o_s;
+      if (flush_needed) oe_flush_page(enc);
+      else output_pages(enc);
+#else
       flush_needed = op.e_o_s || enc->curr_granule - enc->last_page_granule >= enc->max_ogg_delay;
       if (flush_needed) {
-#if 1
         oe_flush_page(enc);
-#else
-        oggp_flush_page(enc->oggp);
-        {
-          unsigned char *page;
-          int len;
-          while (oggp_get_next_page(enc->oggp, &page, &len)) {
-            fwrite(page, 1, len, stdout);
-            fflush(stdout);
-          }
-        }
-        while (ogg_stream_flush_fill(&enc->streams->os, &og, 255*255)) {
-          if (ogg_page_packets(&og) != 0) enc->last_page_granule = ogg_page_granulepos(&og) + enc->streams->granule_offset;
-          int ret = oe_write_page(enc, &og, enc->streams->user_data);
-          /* FIXME: what do we do if this fails? */
-          assert(ret != -1);
-        }
-#endif
       } else {
         while (ogg_stream_pageout_fill(&enc->streams->os, &og, 255*255)) {
           if (ogg_page_packets(&og) != 0) enc->last_page_granule = ogg_page_granulepos(&og) + enc->streams->granule_offset;
@@ -448,6 +441,7 @@ static void encode_buffer(OggOpusEnc *enc) {
           assert(ret != -1);
         }
       }
+#endif
       if (op.e_o_s) {
         EncStream *tmp;
         tmp = enc->streams->next;

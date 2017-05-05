@@ -163,7 +163,7 @@ oggpacker *oggp_create(int serialno) {
 
   oggp->buf_size = MAX_PAGE_SIZE;
   oggp->lacing_size = 256;
-  oggp->pages_size = 32;
+  oggp->pages_size = 10;
 
   oggp->alloc_buf = malloc(oggp->buf_size + MAX_HEADER_SIZE);
   oggp->lacing = malloc(oggp->lacing_size);
@@ -243,6 +243,8 @@ unsigned char *oggp_get_packet_buffer(oggpacker *oggp, int bytes) {
       int newsize;
       unsigned char *newbuf;
       newsize = oggp->buf_fill + bytes + MAX_HEADER_SIZE;
+      /* Making sure we don't need to do that too often. */
+      newsize = newsize*3/2;
       newbuf = realloc(oggp->alloc_buf, newsize);
       if (newbuf != NULL) {
         oggp->alloc_buf = newbuf;
@@ -279,6 +281,8 @@ int oggp_commit_packet(oggpacker *oggp, int bytes, oggp_uint64 granulepos, int e
       int newsize;
       unsigned char *newbuf;
       newsize = oggp->lacing_fill + nb_255s + 1;
+      /* Making sure we don't need to do that too often. */
+      newsize = newsize*3/2;
       newbuf = realloc(oggp->lacing, newsize);
       if (newbuf != NULL) {
         oggp->lacing = newbuf;
@@ -316,8 +320,19 @@ int oggp_flush_page(oggpacker *oggp) {
   }
   nb_lacing = oggp->lacing_fill - oggp->lacing_begin;
   do {
-    assert(oggp->pages_fill < oggp->pages_size);
-    /* FIXME: Check we have a free page. */
+    if (oggp->pages_fill >= oggp->pages_size) {
+      int newsize;
+      oggp_page *newbuf;
+      /* Making sure we don't need to do that too often. */
+      newsize = 1 + oggp->pages_size*3/2;
+      newbuf = realloc(oggp->pages, newsize*sizeof(oggp_page));
+      if (newbuf != NULL) {
+        oggp->pages = newbuf;
+        oggp->pages_size = newsize;
+      } else {
+        assert(0);
+      }
+    }
     p = &oggp->pages[oggp->pages_fill++];
     p->granulepos = oggp->curr_granule;
 

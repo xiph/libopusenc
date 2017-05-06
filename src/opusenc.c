@@ -93,6 +93,7 @@ struct OggOpusEnc {
 #ifdef USE_OGGP
   oggpacker *oggp;
 #endif
+  int unrecoverable;
   int pull_api;
   int rate;
   int channels;
@@ -256,6 +257,7 @@ OggOpusEnc *ope_create_callbacks(const OpusEncCallbacks *callbacks, void *user_d
 #ifdef USE_OGGP
   enc->oggp = NULL;
 #endif
+  enc->unrecoverable = 0;
   enc->pull_api = 0;
   enc->packet_callback = NULL;
   enc->rate = rate;
@@ -332,13 +334,16 @@ static void init_stream(OggOpusEnc *enc) {
   if (enc->oggp != NULL) oggp_chain(enc->oggp, enc->streams->serialno);
   else {
     enc->oggp = oggp_create(enc->streams->serialno);
-    /* FIXME: How the hell do we handle failure here? */
+    if (enc->oggp == NULL) {
+      enc->unrecoverable = 1;
+      return;
+    }
     oggp_set_muxing_delay(enc->oggp, enc->max_ogg_delay);
   }
 #else
   if (ogg_stream_init(&enc->streams->os, enc->streams->serialno) == -1) {
-    assert(0);
-    /* FIXME: How the hell do we handle that? */
+    enc->unrecoverable = 1;
+    return;
   }
 #endif
   comment_pad(&enc->streams->comment, &enc->streams->comment_length, enc->comment_padding);
@@ -417,7 +422,11 @@ static void encode_buffer(OggOpusEnc *enc) {
     }
     nbBytes = opus_multistream_encode_float(enc->st, &enc->buffer[enc->channels*enc->buffer_start],
         enc->buffer_end-enc->buffer_start, packet, MAX_PACKET_SIZE);
-    /* FIXME: How do we handle failure here. */
+    if (nbBytes < 0) {
+      /* Anything better we can do here? */
+      enc->unrecoverable = 1;
+      return;
+    }
     opus_multistream_encoder_ctl(enc->st, OPUS_SET_PREDICTION_DISABLED(pred));
     assert(nbBytes > 0);
     enc->curr_granule += enc->frame_size;

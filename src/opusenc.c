@@ -398,9 +398,12 @@ static void init_stream(OggOpusEnc *enc) {
 }
 
 static void shift_buffer(OggOpusEnc *enc) {
-    memmove(enc->buffer, &enc->buffer[enc->channels*enc->buffer_start], enc->channels*(enc->buffer_end-enc->buffer_start)*sizeof(*enc->buffer));
-    enc->buffer_end -= enc->buffer_start;
-    enc->buffer_start = 0;
+  /* Leaving enough in the buffer to do LPC extension if needed. */
+  if (enc->buffer_start > LPC_INPUT) {
+    memmove(&enc->buffer[enc->channels*LPC_INPUT], &enc->buffer[enc->channels*enc->buffer_start], enc->channels*(enc->buffer_end-enc->buffer_start)*sizeof(*enc->buffer));
+    enc->buffer_end -= enc->buffer_start-LPC_INPUT;
+    enc->buffer_start = LPC_INPUT;
+  }
 }
 
 static void encode_buffer(OggOpusEnc *enc) {
@@ -624,6 +627,7 @@ int ope_drain(OggOpusEnc *enc) {
   int pad_samples = 3000;
   if (!enc->streams->stream_is_init) init_stream(enc);
   shift_buffer(enc);
+  assert(enc->buffer_end + pad_samples <= BUFFER_SAMPLES);
   memset(&enc->buffer[enc->channels*enc->buffer_end], 0, pad_samples*enc->channels*sizeof(enc->buffer[0]));
   extend_signal(&enc->buffer[enc->channels*enc->buffer_end], enc->buffer_end, LPC_PADDING, enc->channels);
   enc->decision_delay = 0;
@@ -947,9 +951,10 @@ static void vorbis_lpc_from_data(float *data, float *lpci, int n, int stride) {
   }
 
   /* Apply lag windowing (better than bandwidth expansion) */
-  if (LPC_ORDER <= 32) {
+  if (LPC_ORDER <= 64) {
     for (i=1;i<=LPC_ORDER;i++) {
-      /*aut[i] *= exp(-.5*(2*M_PI*.002*i)*(2*M_PI*.002*i));*/
+      /* Approximate this gaussian for low enough order. */
+      /* aut[i] *= exp(-.5*(2*M_PI*.002*i)*(2*M_PI*.002*i));*/
       aut[i] -= aut[i]*(0.008f*0.008f)*i*i;
     }
   }

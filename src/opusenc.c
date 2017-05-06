@@ -48,6 +48,10 @@
 #define MAX_CHANNELS 8
 
 #define LPC_PADDING 120
+#define LPC_ORDER 24
+#define LPC_INPUT 480
+/* Make the following constant always equal to 2*cos(M_PI/LPC_PADDING) */
+#define LPC_GOERTZEL_CONST 1.99931465f
 
 /* Allow up to 2 seconds for delayed decision. */
 #define MAX_LOOKAHEAD 96000
@@ -394,9 +398,12 @@ static void init_stream(OggOpusEnc *enc) {
 }
 
 static void shift_buffer(OggOpusEnc *enc) {
-    memmove(enc->buffer, &enc->buffer[enc->channels*enc->buffer_start], enc->channels*(enc->buffer_end-enc->buffer_start)*sizeof(*enc->buffer));
-    enc->buffer_end -= enc->buffer_start;
-    enc->buffer_start = 0;
+  /* Leaving enough in the buffer to do LPC extension if needed. */
+  if (enc->buffer_start > LPC_INPUT) {
+    memmove(&enc->buffer[enc->channels*LPC_INPUT], &enc->buffer[enc->channels*enc->buffer_start], enc->channels*(enc->buffer_end-enc->buffer_start)*sizeof(*enc->buffer));
+    enc->buffer_end -= enc->buffer_start-LPC_INPUT;
+    enc->buffer_start = LPC_INPUT;
+  }
 }
 
 static void encode_buffer(OggOpusEnc *enc) {
@@ -610,6 +617,8 @@ OPE_EXPORT int ope_get_page(OggOpusEnc *enc, unsigned char **page, int *len, int
   }
 }
 
+static void extend_signal(float *x, int before, int after, int channels);
+
 int ope_drain(OggOpusEnc *enc) {
   if (enc->unrecoverable) return OPE_UNRECOVERABLE;
   /* Check if it's already been drained. */
@@ -618,8 +627,9 @@ int ope_drain(OggOpusEnc *enc) {
   int pad_samples = 3000;
   if (!enc->streams->stream_is_init) init_stream(enc);
   shift_buffer(enc);
-  /* FIXME: Do LPC extension instead. */
-  memset(&enc->buffer[enc->channels*enc->buffer_end], 0, pad_samples*enc->channels);
+  assert(enc->buffer_end + pad_samples <= BUFFER_SAMPLES);
+  memset(&enc->buffer[enc->channels*enc->buffer_end], 0, pad_samples*enc->channels*sizeof(enc->buffer[0]));
+  extend_signal(&enc->buffer[enc->channels*enc->buffer_end], enc->buffer_end, LPC_PADDING, enc->channels);
   enc->decision_delay = 0;
   enc->buffer_end += pad_samples;
   assert(enc->buffer_end <= BUFFER_SAMPLES);
@@ -855,3 +865,148 @@ int ope_encoder_ctl(OggOpusEnc *enc, int request, ...) {
   assert(ret == 0 || ret < -10);
   return ret;
 }
+
+
+static void vorbis_lpc_from_data(float *data, float *lpci, int n, int stride);
+
+static void extend_signal(float *x, int before, int after, int channels) {
+  int c;
+  int i;
+  float window[LPC_PADDING];
+  if (after==0) return;
+  before = MIN(before, LPC_INPUT);
+  if (before < 4*LPC_ORDER) {
+    int i;
+    for (i=0;i<after*channels;i++) x[i] = 0;
+    return;
+  }
+  {
+    /* Generate Window using a resonating IIR aka Goertzel's algorithm. */
+    float m0=1, m1=1;
+    float a1 = LPC_GOERTZEL_CONST;
+    window[0] = 1;
+    for (i=1;i<LPC_PADDING;i++) {
+      window[i] = a1*m0 - m1;
+      m1 = m0;
+      m0 = window[i];
+    }
+    for (i=0;i<LPC_PADDING;i++) window[i] = .5+.5*window[i];
+  }
+  for (c=0;c<channels;c++) {
+    float lpc[LPC_ORDER];
+    vorbis_lpc_from_data(x-channels*before+c, lpc, before, channels);
+    for (i=0;i<after;i++) {
+      float sum;
+      int j;
+      sum = 0;
+      for (j=0;j<LPC_ORDER;j++) sum -= x[(i-j-1)*channels + c]*lpc[j];
+      x[i*channels + c] = sum;
+    }
+    for (i=0;i<after;i++) x[i*channels + c] *= window[i];
+  }
+}
+
+/* Some of these routines (autocorrelator, LPC coefficient estimator)
+   are derived from code written by Jutta Degener and Carsten Bormann;
+   thus we include their copyright below.  The entirety of this file
+   is freely redistributable on the condition that both of these
+   copyright notices are preserved without modification.  */
+
+/* Preserved Copyright: *********************************************/
+
+/* Copyright 1992, 1993, 1994 by Jutta Degener and Carsten Bormann,
+Technische Universita"t Berlin
+
+Any use of this software is permitted provided that this notice is not
+removed and that neither the authors nor the Technische Universita"t
+Berlin are deemed to have made any representations as to the
+suitability of this software for any purpose nor are held responsible
+for any defects of this software. THERE IS ABSOLUTELY NO WARRANTY FOR
+THIS SOFTWARE.
+
+As a matter of courtesy, the authors request to be informed about uses
+this software has found, about bugs in this software, and about any
+improvements that may be of general interest.
+
+Berlin, 28.11.1994
+Jutta Degener
+Carsten Bormann
+
+*********************************************************************/
+
+static void vorbis_lpc_from_data(float *data, float *lpci, int n, int stride) {
+  double aut[LPC_ORDER+1];
+  double lpc[LPC_ORDER];
+  double error;
+  double epsilon;
+  int i,j;
+
+  /* FIXME: Apply a window to the input. */
+  /* autocorrelation, p+1 lag coefficients */
+  j=LPC_ORDER+1;
+  while(j--){
+    double d=0; /* double needed for accumulator depth */
+    for(i=j;i<n;i++)d+=(double)data[i*stride]*data[(i-j)*stride];
+    aut[j]=d;
+  }
+
+  /* Apply lag windowing (better than bandwidth expansion) */
+  if (LPC_ORDER <= 64) {
+    for (i=1;i<=LPC_ORDER;i++) {
+      /* Approximate this gaussian for low enough order. */
+      /* aut[i] *= exp(-.5*(2*M_PI*.002*i)*(2*M_PI*.002*i));*/
+      aut[i] -= aut[i]*(0.008f*0.008f)*i*i;
+    }
+  }
+  /* Generate lpc coefficients from autocorr values */
+
+  /* set our noise floor to about -100dB */
+  error=aut[0] * (1. + 1e-7);
+  epsilon=1e-6*aut[0]+1e-7;
+
+  for(i=0;i<LPC_ORDER;i++){
+    double r= -aut[i+1];
+
+    if(error<epsilon){
+      memset(lpc+i,0,(LPC_ORDER-i)*sizeof(*lpc));
+      goto done;
+    }
+
+    /* Sum up this iteration's reflection coefficient; note that in
+       Vorbis we don't save it.  If anyone wants to recycle this code
+       and needs reflection coefficients, save the results of 'r' from
+       each iteration. */
+
+    for(j=0;j<i;j++)r-=lpc[j]*aut[i-j];
+    r/=error;
+
+    /* Update LPC coefficients and total error */
+
+    lpc[i]=r;
+    for(j=0;j<i/2;j++){
+      double tmp=lpc[j];
+
+      lpc[j]+=r*lpc[i-1-j];
+      lpc[i-1-j]+=r*tmp;
+    }
+    if(i&1)lpc[j]+=lpc[j]*r;
+
+    error*=1.-r*r;
+
+  }
+
+ done:
+
+  /* slightly damp the filter */
+  {
+    double g = .999;
+    double damp = g;
+    for(j=0;j<LPC_ORDER;j++){
+      lpc[j]*=damp;
+      damp*=g;
+    }
+  }
+
+  for(j=0;j<LPC_ORDER;j++)lpci[j]=(float)lpc[j];
+}
+

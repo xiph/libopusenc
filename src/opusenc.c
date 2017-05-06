@@ -50,6 +50,8 @@
 #define LPC_PADDING 120
 #define LPC_ORDER 24
 #define LPC_INPUT 480
+/* Make the following constant always equal to 2*cos(M_PI/LPC_PADDING) */
+#define LPC_GOERTZEL_CONST 1.99931465f
 
 /* Allow up to 2 seconds for delayed decision. */
 #define MAX_LOOKAHEAD 96000
@@ -622,7 +624,6 @@ int ope_drain(OggOpusEnc *enc) {
   int pad_samples = 3000;
   if (!enc->streams->stream_is_init) init_stream(enc);
   shift_buffer(enc);
-  /* FIXME: Do LPC extension instead. */
   memset(&enc->buffer[enc->channels*enc->buffer_end], 0, pad_samples*enc->channels*sizeof(enc->buffer[0]));
   extend_signal(&enc->buffer[enc->channels*enc->buffer_end], enc->buffer_end, LPC_PADDING, enc->channels);
   enc->decision_delay = 0;
@@ -866,14 +867,28 @@ static void vorbis_lpc_from_data(float *data, float *lpci, int n, int stride);
 
 static void extend_signal(float *x, int before, int after, int channels) {
   int c;
+  int i;
+  float window[LPC_PADDING];
+  if (after==0) return;
   before = MIN(before, LPC_INPUT);
   if (before < 4*LPC_ORDER) {
     int i;
     for (i=0;i<after*channels;i++) x[i] = 0;
     return;
   }
+  {
+    /* Generate Window using a resonating IIR aka Goertzel's algorithm. */
+    float m0=1, m1=1;
+    float a1 = LPC_GOERTZEL_CONST;
+    window[0] = 1;
+    for (i=1;i<LPC_PADDING;i++) {
+      window[i] = a1*m0 - m1;
+      m1 = m0;
+      m0 = window[i];
+    }
+    for (i=0;i<LPC_PADDING;i++) window[i] = .5+.5*window[i];
+  }
   for (c=0;c<channels;c++) {
-    int i;
     float lpc[LPC_ORDER];
     vorbis_lpc_from_data(x-channels*before+c, lpc, before, channels);
     for (i=0;i<after;i++) {
@@ -883,6 +898,7 @@ static void extend_signal(float *x, int before, int after, int channels) {
       for (j=0;j<LPC_ORDER;j++) sum -= x[(i-j-1)*channels + c]*lpc[j];
       x[i*channels + c] = sum;
     }
+    for (i=0;i<after;i++) x[i*channels + c] *= window[i];
   }
 }
 
@@ -930,13 +946,18 @@ static void vorbis_lpc_from_data(float *data, float *lpci, int n, int stride) {
     aut[j]=d;
   }
 
-  /* FIXME: Apply lag windowing (better than bandwidth expansion) */
+  /* Apply lag windowing (better than bandwidth expansion) */
+  if (LPC_ORDER <= 32) {
+    for (i=1;i<=LPC_ORDER;i++) {
+      /*aut[i] *= exp(-.5*(2*M_PI*.002*i)*(2*M_PI*.002*i));*/
+      aut[i] -= aut[i]*(0.008f*0.008f)*i*i;
+    }
+  }
   /* Generate lpc coefficients from autocorr values */
 
-  /* FIXME: This noise floor is insane! */
   /* set our noise floor to about -100dB */
-  error=aut[0] * (1. + 1e-10);
-  epsilon=1e-9*aut[0]+1e-10;
+  error=aut[0] * (1. + 1e-7);
+  epsilon=1e-6*aut[0]+1e-7;
 
   for(i=0;i<LPC_ORDER;i++){
     double r= -aut[i+1];
@@ -973,7 +994,7 @@ static void vorbis_lpc_from_data(float *data, float *lpci, int n, int stride) {
 
   /* slightly damp the filter */
   {
-    double g = .99;
+    double g = .999;
     double damp = g;
     for(j=0;j<LPC_ORDER;j++){
       lpc[j]*=damp;

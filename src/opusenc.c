@@ -875,13 +875,13 @@ static void extend_signal(float *x, int before, int after, int channels) {
   for (c=0;c<channels;c++) {
     int i;
     float lpc[LPC_ORDER];
-    vorbis_lpc_from_data(x-channels*before, lpc, before, channels);
+    vorbis_lpc_from_data(x-channels*before+c, lpc, before, channels);
     for (i=0;i<after;i++) {
       float sum;
       int j;
       sum = 0;
-      for (j=0;j<LPC_ORDER;j++) sum -= x[i-j-1]*lpc[j];
-      x[i] = sum;
+      for (j=0;j<LPC_ORDER;j++) sum -= x[(i-j-1)*channels + c]*lpc[j];
+      x[i*channels + c] = sum;
     }
   }
 }

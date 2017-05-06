@@ -413,6 +413,7 @@ static void encode_buffer(OggOpusEnc *enc) {
     int nbBytes;
     unsigned char packet[MAX_PACKET_SIZE];
     int is_keyframe=0;
+    if (enc->unrecoverable) return;
     opus_multistream_encoder_ctl(enc->st, OPUS_GET_PREDICTION_DISABLED(&pred));
     /* FIXME: a frame that follows a keyframe generally doesn't need to be a keyframe
        unless there's two consecutive stream boundaries. */
@@ -530,6 +531,7 @@ static void encode_buffer(OggOpusEnc *enc) {
 /* Add/encode any number of float samples to the file. */
 int ope_write_float(OggOpusEnc *enc, const float *pcm, int samples_per_channel) {
   int channels = enc->channels;
+  if (enc->unrecoverable) return OPE_UNRECOVERABLE;
   enc->last_stream->header_is_frozen = 1;
   if (!enc->streams->stream_is_init) init_stream(enc);
   if (samples_per_channel < 0) return OPE_BAD_ARG;
@@ -554,6 +556,7 @@ int ope_write_float(OggOpusEnc *enc, const float *pcm, int samples_per_channel) 
     pcm += in_samples*channels;
     samples_per_channel -= in_samples;
     encode_buffer(enc);
+    if (enc->unrecoverable) return OPE_UNRECOVERABLE;
   } while (samples_per_channel > 0);
   return OPE_OK;
 }
@@ -563,6 +566,7 @@ int ope_write_float(OggOpusEnc *enc, const float *pcm, int samples_per_channel) 
 /* Add/encode any number of int16 samples to the file. */
 int ope_write(OggOpusEnc *enc, const opus_int16 *pcm, int samples_per_channel) {
   int channels = enc->channels;
+  if (enc->unrecoverable) return OPE_UNRECOVERABLE;
   enc->last_stream->header_is_frozen = 1;
   if (!enc->streams->stream_is_init) init_stream(enc);
   if (samples_per_channel < 0) return OPE_BAD_ARG;
@@ -591,12 +595,14 @@ int ope_write(OggOpusEnc *enc, const opus_int16 *pcm, int samples_per_channel) {
     pcm += in_samples*channels;
     samples_per_channel -= in_samples;
     encode_buffer(enc);
+    if (enc->unrecoverable) return OPE_UNRECOVERABLE;
   } while (samples_per_channel > 0);
   return OPE_OK;
 }
 
 /* Get the next page from the stream. Returns 1 if there is a page available, 0 if not. */
 OPE_EXPORT int ope_get_page(OggOpusEnc *enc, unsigned char **page, int *len, int flush) {
+  if (enc->unrecoverable) return OPE_UNRECOVERABLE;
   if (!enc->pull_api) return 0;
   else {
     if (flush) oggp_flush_page(enc->oggp);
@@ -605,6 +611,7 @@ OPE_EXPORT int ope_get_page(OggOpusEnc *enc, unsigned char **page, int *len, int
 }
 
 int ope_drain(OggOpusEnc *enc) {
+  if (enc->unrecoverable) return OPE_UNRECOVERABLE;
   /* Check if it's already been drained. */
   if (enc->streams == NULL) return OPE_TOO_LATE;
   /* FIXME: Use a better value. */
@@ -666,6 +673,7 @@ int ope_continue_new_file(OggOpusEnc *enc, const char *path) {
 
 /* Ends the stream and create a new file (callback-based). */
 int ope_continue_new_callbacks(OggOpusEnc *enc, void *user_data) {
+  if (enc->unrecoverable) return OPE_UNRECOVERABLE;
   EncStream *new_stream;
   assert(enc->streams);
   assert(enc->last_stream);
@@ -679,6 +687,7 @@ int ope_continue_new_callbacks(OggOpusEnc *enc, void *user_data) {
 
 /* Add a comment to the file (can only be called before encoding samples). */
 int ope_add_comment(OggOpusEnc *enc, const char *tag, const char *val) {
+  if (enc->unrecoverable) return OPE_UNRECOVERABLE;
   if (enc->last_stream->header_is_frozen) return OPE_TOO_LATE;
   if (enc->last_stream->stream_is_init) return OPE_TOO_LATE;
   if (comment_add(&enc->last_stream->comment, &enc->last_stream->comment_length, tag, val)) return OPE_ALLOC_FAIL;
@@ -688,6 +697,7 @@ int ope_add_comment(OggOpusEnc *enc, const char *tag, const char *val) {
 int ope_add_picture(OggOpusEnc *enc, const char *spec) {
   const char *error_message;
   char *picture_data;
+  if (enc->unrecoverable) return OPE_UNRECOVERABLE;
   if (enc->last_stream->header_is_frozen) return OPE_TOO_LATE;
   if (enc->last_stream->stream_is_init) return OPE_TOO_LATE;
   picture_data = parse_picture_specification(spec, &error_message, &enc->last_stream->seen_file_icons);
@@ -703,6 +713,7 @@ int ope_add_picture(OggOpusEnc *enc, const char *spec) {
 
 /* Sets the Opus comment vendor string (optional, defaults to library info). */
 int ope_set_vendor_string(OggOpusEnc *enc, const char *vendor) {
+  if (enc->unrecoverable) return OPE_UNRECOVERABLE;
   if (enc->last_stream->header_is_frozen) return OPE_TOO_LATE;
   if (enc->last_stream->stream_is_init) return OPE_TOO_LATE;
   if (comment_replace_vendor_string(&enc->last_stream->comment, &enc->last_stream->comment_length, vendor)) return OPE_ALLOC_FAIL;
@@ -710,6 +721,7 @@ int ope_set_vendor_string(OggOpusEnc *enc, const char *vendor) {
 }
 
 int ope_flush_header(OggOpusEnc *enc) {
+  if (enc->unrecoverable) return OPE_UNRECOVERABLE;
   if (enc->last_stream->header_is_frozen) return OPE_TOO_LATE;
   if (enc->last_stream->stream_is_init) return OPE_TOO_LATE;
   else init_stream(enc);
@@ -721,6 +733,7 @@ int ope_encoder_ctl(OggOpusEnc *enc, int request, ...) {
   int ret;
   int translate;
   va_list ap;
+  if (enc->unrecoverable) return OPE_UNRECOVERABLE;
   va_start(ap, request);
   switch (request) {
     case OPUS_SET_APPLICATION_REQUEST:

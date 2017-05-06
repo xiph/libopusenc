@@ -58,6 +58,7 @@ extern "C" {
 /* Specific to libopusenc. */
 #define OPE_CANNOT_OPEN -30
 #define OPE_TOO_LATE -31
+#define OPE_UNRECOVERABLE -32
 
 
 /* These are the "raw" request values -- they should usually not be used. */

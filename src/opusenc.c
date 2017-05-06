@@ -623,7 +623,7 @@ int ope_drain(OggOpusEnc *enc) {
   if (!enc->streams->stream_is_init) init_stream(enc);
   shift_buffer(enc);
   /* FIXME: Do LPC extension instead. */
-  memset(&enc->buffer[enc->channels*enc->buffer_end], 0, pad_samples*enc->channels);
+  memset(&enc->buffer[enc->channels*enc->buffer_end], 0, pad_samples*enc->channels*sizeof(enc->buffer[0]));
   extend_signal(&enc->buffer[enc->channels*enc->buffer_end], enc->buffer_end, LPC_PADDING, enc->channels);
   enc->decision_delay = 0;
   enc->buffer_end += pad_samples;

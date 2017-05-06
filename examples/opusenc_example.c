@@ -13,12 +13,13 @@ int main(int argc, char **argv) {
   }
   fin = fopen(argv[1], "r");
   if (!fin) {
-    printf("cannout open input file: %s\n", argv[1]);
+    fprintf(stderr, "cannot open input file: %s\n", argv[1]);
     return 1;
   }
   enc = ope_create_file(argv[2], 48000, 2, 0, &error);
   if (!enc) {
-    printf("cannout open output file: %s\n", argv[2]);
+    fprintf(stderr, "cannout open output file: %s\n", argv[2]);
+    fclose(fin);
     return 1;
   }
   ope_add_comment(enc, "ARTIST", "Someone");

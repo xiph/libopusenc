@@ -166,7 +166,8 @@ int stdio_write(void *user_data, const unsigned char *ptr, int len) {
 
 int stdio_close(void *user_data) {
   struct StdioObject *obj = (struct StdioObject*)user_data;
-  int ret = fclose(obj->file);
+  int ret = 0;
+  if (obj->file) ret = fclose(obj->file);
   free(obj);
   return ret;
 }
@@ -188,8 +189,7 @@ OggOpusEnc *ope_create_file(const char *path, int rate, int channels, int family
   obj->file = fopen(path, "wb");
   if (!obj->file) {
     if (error) *error = OPE_CANNOT_OPEN;
-    /* FIXME: Destroy the encoder properly. */
-    free(obj);
+    ope_destroy(enc);
     return NULL;
   }
   return enc;
@@ -624,7 +624,7 @@ void ope_destroy(OggOpusEnc *enc) {
   if (enc->chaining_keyframe) free(enc->chaining_keyframe);
   free(enc->buffer);
 #ifdef USE_OGGP
-  oggp_destroy(enc->oggp);
+  if (enc->oggp) oggp_destroy(enc->oggp);
 #endif
   opus_multistream_encoder_destroy(enc->st);
   if (enc->re) speex_resampler_destroy(enc->re);

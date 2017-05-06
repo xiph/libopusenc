@@ -596,6 +596,8 @@ OPE_EXPORT int ope_get_page(OggOpusEnc *enc, unsigned char **page, int *len, int
 }
 
 int ope_drain(OggOpusEnc *enc) {
+  /* Check if it's already been drained. */
+  if (enc->streams == NULL) return OPE_TOO_LATE;
   /* FIXME: Use a better value. */
   int pad_samples = 3000;
   if (!enc->streams->stream_is_init) init_stream(enc);
@@ -611,7 +613,14 @@ int ope_drain(OggOpusEnc *enc) {
 }
 
 void ope_destroy(OggOpusEnc *enc) {
-  /* FIXME: cleanup non-closed streams if any remain. */
+  EncStream *stream;
+  stream = enc->streams;
+  while (stream != NULL) {
+    EncStream *tmp = stream;
+    stream = stream->next;
+    if (tmp->close_at_end) enc->callbacks.close(tmp->user_data);
+    stream_destroy(tmp);
+  }
   if (enc->chaining_keyframe) free(enc->chaining_keyframe);
   free(enc->buffer);
 #ifdef USE_OGGP

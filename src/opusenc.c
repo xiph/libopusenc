@@ -620,11 +620,11 @@ OPE_EXPORT int ope_get_page(OggOpusEnc *enc, unsigned char **page, int *len, int
 static void extend_signal(float *x, int before, int after, int channels);
 
 int ope_drain(OggOpusEnc *enc) {
+  int pad_samples;
   if (enc->unrecoverable) return OPE_UNRECOVERABLE;
   /* Check if it's already been drained. */
   if (enc->streams == NULL) return OPE_TOO_LATE;
-  /* FIXME: Use a better value. */
-  int pad_samples = 3000;
+  pad_samples = MAX(LPC_PADDING, enc->global_granule_offset + enc->frame_size);
   if (!enc->streams->stream_is_init) init_stream(enc);
   shift_buffer(enc);
   assert(enc->buffer_end + pad_samples <= BUFFER_SAMPLES);
@@ -634,6 +634,8 @@ int ope_drain(OggOpusEnc *enc) {
   enc->buffer_end += pad_samples;
   assert(enc->buffer_end <= BUFFER_SAMPLES);
   encode_buffer(enc);
+  if (enc->unrecoverable) return OPE_UNRECOVERABLE;
+  /* Draining should have called all the streams to complete. */
   assert(enc->streams == NULL);
   return OPE_OK;
 }

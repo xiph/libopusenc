@@ -884,7 +884,7 @@ static void extend_signal(float *x, int before, int after, int channels) {
   }
   {
     /* Generate Window using a resonating IIR aka Goertzel's algorithm. */
-    float m0=1, m1=1;
+    float m0=1, m1=.5*LPC_GOERTZEL_CONST;
     float a1 = LPC_GOERTZEL_CONST;
     window[0] = 1;
     for (i=1;i<LPC_PADDING;i++) {

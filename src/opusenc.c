@@ -250,18 +250,18 @@ static const OpusEncCallbacks stdio_callbacks = {
 };
 
 /* Create a new OggOpus file. */
-OggOpusEnc *ope_create_file(const char *path, const OggOpusComments *comments, int rate, int channels, int family, int *error) {
+OggOpusEnc *ope_encoder_create_file(const char *path, const OggOpusComments *comments, int rate, int channels, int family, int *error) {
   OggOpusEnc *enc;
   struct StdioObject *obj;
   obj = malloc(sizeof(*obj));
-  enc = ope_create_callbacks(&stdio_callbacks, obj, comments, rate, channels, family, error);
+  enc = ope_encoder_create_callbacks(&stdio_callbacks, obj, comments, rate, channels, family, error);
   if (enc == NULL || (error && *error)) {
     return NULL;
   }
   obj->file = fopen(path, "wb");
   if (!obj->file) {
     if (error) *error = OPE_CANNOT_OPEN;
-    ope_destroy(enc);
+    ope_encoder_destroy(enc);
     return NULL;
   }
   return enc;
@@ -298,7 +298,7 @@ static void stream_destroy(EncStream *stream) {
 }
 
 /* Create a new OggOpus file (callback-based). */
-OggOpusEnc *ope_create_callbacks(const OpusEncCallbacks *callbacks, void *user_data,
+OggOpusEnc *ope_encoder_create_callbacks(const OpusEncCallbacks *callbacks, void *user_data,
     const OggOpusComments *comments, int rate, int channels, int family, int *error) {
   OpusMSEncoder *st=NULL;
   OggOpusEnc *enc=NULL;
@@ -385,8 +385,8 @@ fail:
 }
 
 /* Create a new OggOpus stream, pulling one page at a time. */
-OPE_EXPORT OggOpusEnc *ope_create_pull(const OggOpusComments *comments, int rate, int channels, int family, int *error) {
-  OggOpusEnc *enc = ope_create_callbacks(NULL, NULL, comments, rate, channels, family, error);
+OPE_EXPORT OggOpusEnc *ope_encoder_create_pull(const OggOpusComments *comments, int rate, int channels, int family, int *error) {
+  OggOpusEnc *enc = ope_encoder_create_callbacks(NULL, NULL, comments, rate, channels, family, error);
   enc->pull_api = 1;
   return enc;
 }
@@ -599,7 +599,7 @@ static void encode_buffer(OggOpusEnc *enc) {
 }
 
 /* Add/encode any number of float samples to the file. */
-int ope_write_float(OggOpusEnc *enc, const float *pcm, int samples_per_channel) {
+int ope_encoder_write_float(OggOpusEnc *enc, const float *pcm, int samples_per_channel) {
   int channels = enc->channels;
   if (enc->unrecoverable) return OPE_UNRECOVERABLE;
   enc->last_stream->header_is_frozen = 1;
@@ -634,7 +634,7 @@ int ope_write_float(OggOpusEnc *enc, const float *pcm, int samples_per_channel) 
 #define CONVERT_BUFFER 256
 
 /* Add/encode any number of int16 samples to the file. */
-int ope_write(OggOpusEnc *enc, const opus_int16 *pcm, int samples_per_channel) {
+int ope_encoder_write(OggOpusEnc *enc, const opus_int16 *pcm, int samples_per_channel) {
   int channels = enc->channels;
   if (enc->unrecoverable) return OPE_UNRECOVERABLE;
   enc->last_stream->header_is_frozen = 1;
@@ -671,7 +671,7 @@ int ope_write(OggOpusEnc *enc, const opus_int16 *pcm, int samples_per_channel) {
 }
 
 /* Get the next page from the stream. Returns 1 if there is a page available, 0 if not. */
-OPE_EXPORT int ope_get_page(OggOpusEnc *enc, unsigned char **page, int *len, int flush) {
+OPE_EXPORT int ope_encoder_get_page(OggOpusEnc *enc, unsigned char **page, int *len, int flush) {
   if (enc->unrecoverable) return OPE_UNRECOVERABLE;
   if (!enc->pull_api) return 0;
   else {
@@ -682,7 +682,7 @@ OPE_EXPORT int ope_get_page(OggOpusEnc *enc, unsigned char **page, int *len, int
 
 static void extend_signal(float *x, int before, int after, int channels);
 
-int ope_drain(OggOpusEnc *enc) {
+int ope_encoder_drain(OggOpusEnc *enc) {
   int pad_samples;
   if (enc->unrecoverable) return OPE_UNRECOVERABLE;
   /* Check if it's already been drained. */
@@ -703,7 +703,7 @@ int ope_drain(OggOpusEnc *enc) {
   return OPE_OK;
 }
 
-void ope_destroy(OggOpusEnc *enc) {
+void ope_encoder_destroy(OggOpusEnc *enc) {
   EncStream *stream;
   stream = enc->streams;
   while (stream != NULL) {
@@ -723,13 +723,13 @@ void ope_destroy(OggOpusEnc *enc) {
 }
 
 /* Ends the stream and create a new stream within the same file. */
-int ope_chain_current(OggOpusEnc *enc, const OggOpusComments *comments) {
+int ope_encoder_chain_current(OggOpusEnc *enc, const OggOpusComments *comments) {
   enc->last_stream->close_at_end = 0;
-  return ope_continue_new_callbacks(enc, enc->last_stream->user_data, comments);
+  return ope_encoder_continue_new_callbacks(enc, enc->last_stream->user_data, comments);
 }
 
 /* Ends the stream and create a new file. */
-int ope_continue_new_file(OggOpusEnc *enc, const char *path, const OggOpusComments *comments) {
+int ope_encoder_continue_new_file(OggOpusEnc *enc, const char *path, const OggOpusComments *comments) {
   int ret;
   struct StdioObject *obj;
   if (!(obj = malloc(sizeof(*obj)))) return OPE_ALLOC_FAIL;
@@ -739,7 +739,7 @@ int ope_continue_new_file(OggOpusEnc *enc, const char *path, const OggOpusCommen
     /* By trying to open the file first, we can recover if we can't open it. */
     return OPE_CANNOT_OPEN;
   }
-  ret = ope_continue_new_callbacks(enc, obj, comments);
+  ret = ope_encoder_continue_new_callbacks(enc, obj, comments);
   if (ret == OPE_OK) return ret;
   fclose(obj->file);
   free(obj);
@@ -747,7 +747,7 @@ int ope_continue_new_file(OggOpusEnc *enc, const char *path, const OggOpusCommen
 }
 
 /* Ends the stream and create a new file (callback-based). */
-int ope_continue_new_callbacks(OggOpusEnc *enc, void *user_data, const OggOpusComments *comments) {
+int ope_encoder_continue_new_callbacks(OggOpusEnc *enc, void *user_data, const OggOpusComments *comments) {
   if (enc->unrecoverable) return OPE_UNRECOVERABLE;
   EncStream *new_stream;
   assert(enc->streams);
@@ -760,7 +760,7 @@ int ope_continue_new_callbacks(OggOpusEnc *enc, void *user_data, const OggOpusCo
   return OPE_OK;
 }
 
-int ope_flush_header(OggOpusEnc *enc) {
+int ope_encoder_flush_header(OggOpusEnc *enc) {
   if (enc->unrecoverable) return OPE_UNRECOVERABLE;
   if (enc->last_stream->header_is_frozen) return OPE_TOO_LATE;
   if (enc->last_stream->stream_is_init) return OPE_TOO_LATE;

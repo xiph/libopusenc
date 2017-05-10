@@ -20,7 +20,7 @@ int main(int argc, char **argv) {
   comments = ope_comments_create();
   ope_comments_add(comments, "ARTIST", "Someone");
   ope_comments_add(comments, "TITLE", "Some track");
-  enc = ope_create_file(argv[2], comments, 48000, 2, 0, &error);
+  enc = ope_encoder_create_file(argv[2], comments, 48000, 2, 0, &error);
   if (!enc) {
     fprintf(stderr, "cannout open output file: %s\n", argv[2]);
     fclose(fin);
@@ -30,11 +30,11 @@ int main(int argc, char **argv) {
     short buf[2*READ_SIZE];
     int ret = fread(buf, 2*sizeof(short), READ_SIZE, fin);
     if (ret > 0) {
-      ope_write(enc, buf, ret);
+      ope_encoder_write(enc, buf, ret);
     } else break;
   }
-  ope_drain(enc);
-  ope_destroy(enc);
+  ope_encoder_drain(enc);
+  ope_encoder_destroy(enc);
   ope_comments_destroy(comments);
   fclose(fin);
   return 0;

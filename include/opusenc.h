@@ -122,41 +122,41 @@ OPE_EXPORT int ope_comments_add_picture(OggOpusComments *comments, const char *s
 
 
 /** Create a new OggOpus file. */
-OPE_EXPORT OggOpusEnc *ope_create_file(const char *path, const OggOpusComments *comments, int rate, int channels, int family, int *error);
+OPE_EXPORT OggOpusEnc *ope_encoder_create_file(const char *path, const OggOpusComments *comments, int rate, int channels, int family, int *error);
 
 /** Create a new OggOpus file (callback-based). */
-OPE_EXPORT OggOpusEnc *ope_create_callbacks(const OpusEncCallbacks *callbacks, void *user_data,
+OPE_EXPORT OggOpusEnc *ope_encoder_create_callbacks(const OpusEncCallbacks *callbacks, void *user_data,
     const OggOpusComments *comments, int rate, int channels, int family, int *error);
 
 /** Create a new OggOpus stream, pulling one page at a time. */
-OPE_EXPORT OggOpusEnc *ope_create_pull(const OggOpusComments *comments, int rate, int channels, int family, int *error);
+OPE_EXPORT OggOpusEnc *ope_encoder_create_pull(const OggOpusComments *comments, int rate, int channels, int family, int *error);
 
 /** Add/encode any number of float samples to the file. */
-OPE_EXPORT int ope_write_float(OggOpusEnc *enc, const float *pcm, int samples_per_channel);
+OPE_EXPORT int ope_encoder_write_float(OggOpusEnc *enc, const float *pcm, int samples_per_channel);
 
 /** Add/encode any number of int16 samples to the file. */
-OPE_EXPORT int ope_write(OggOpusEnc *enc, const opus_int16 *pcm, int samples_per_channel);
+OPE_EXPORT int ope_encoder_write(OggOpusEnc *enc, const opus_int16 *pcm, int samples_per_channel);
 
 /** Get the next page from the stream. Returns 1 if there is a page available, 0 if not. */
-OPE_EXPORT int ope_get_page(OggOpusEnc *enc, unsigned char **page, int *len, int flush);
+OPE_EXPORT int ope_encoder_get_page(OggOpusEnc *enc, unsigned char **page, int *len, int flush);
 
 /** Finalizes the stream, but does not deallocate the object. */
-OPE_EXPORT int ope_drain(OggOpusEnc *enc);
+OPE_EXPORT int ope_encoder_drain(OggOpusEnc *enc);
 
 /** Deallocates the obect. Make sure to ope_drain() first. */
-OPE_EXPORT void ope_destroy(OggOpusEnc *enc);
+OPE_EXPORT void ope_encoder_destroy(OggOpusEnc *enc);
 
 /** Ends the stream and create a new stream within the same file. */
-OPE_EXPORT int ope_chain_current(OggOpusEnc *enc, const OggOpusComments *comments);
+OPE_EXPORT int ope_encoder_chain_current(OggOpusEnc *enc, const OggOpusComments *comments);
 
 /** Ends the stream and create a new file. */
-OPE_EXPORT int ope_continue_new_file(OggOpusEnc *enc, const char *path, const OggOpusComments *comments);
+OPE_EXPORT int ope_encoder_continue_new_file(OggOpusEnc *enc, const char *path, const OggOpusComments *comments);
 
 /** Ends the stream and create a new file (callback-based). */
-OPE_EXPORT int ope_continue_new_callbacks(OggOpusEnc *enc, void *user_data, const OggOpusComments *comments);
+OPE_EXPORT int ope_encoder_continue_new_callbacks(OggOpusEnc *enc, void *user_data, const OggOpusComments *comments);
 
 /** Write out the header now rather than wait for audio to begin. */
-OPE_EXPORT int ope_flush_header(OggOpusEnc *enc);
+OPE_EXPORT int ope_encoder_flush_header(OggOpusEnc *enc);
 
 /** Goes straight to the libopus ctl() functions. */
 OPE_EXPORT int ope_encoder_ctl(OggOpusEnc *enc, int request, ...);

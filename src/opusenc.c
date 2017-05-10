@@ -71,6 +71,73 @@ struct StdioObject {
   FILE *file;
 };
 
+struct OggOpusComments {
+  char *comment;
+  int comment_length;
+  int seen_file_icons;
+};
+
+/* Create a new comments object. The vendor string is optional. */
+OggOpusComments *ope_comments_create() {
+  OggOpusComments *c;
+  const char *libopus_str;
+  char vendor_str[1024];
+  c = malloc(sizeof(*c));
+  if (c == NULL) return NULL;
+  libopus_str = opus_get_version_string();
+  snprintf(vendor_str, sizeof(vendor_str), "%s, %s version %s", libopus_str, PACKAGE_NAME, PACKAGE_VERSION);
+  comment_init(&c->comment, &c->comment_length, vendor_str);
+  if (c->comment == NULL) {
+    free(c);
+    return NULL;
+  } else {
+    return c;
+  }
+}
+
+/* Create a deep copy of a comments object. */
+OggOpusComments *ope_comments_copy(OggOpusComments *comments) {
+  OggOpusComments *c;
+  c = malloc(sizeof(*c));
+  if (c == NULL) return NULL;
+  memcpy(c, comments, sizeof(*c));
+  c->comment = malloc(comments->comment_length);
+  if (c->comment == NULL) {
+    free(c);
+    return NULL;
+  } else {
+    memcpy(c->comment, comments->comment, comments->comment_length);
+    return c;
+  }
+}
+
+/* Destroys a comments object. */
+void ope_comments_destroy(OggOpusComments *comments){
+  free(comments->comment);
+  free(comments);
+}
+
+/* Add a comment. */
+int ope_comments_add(OggOpusComments *comments, const char *tag, const char *val) {
+  if (comment_add(&comments->comment, &comments->comment_length, tag, val)) return OPE_ALLOC_FAIL;
+  return OPE_OK;
+}
+
+int ope_comments_add_picture(OggOpusComments *comments, const char *spec) {
+  const char *error_message;
+  char *picture_data;
+  picture_data = parse_picture_specification(spec, &error_message, &comments->seen_file_icons);
+  if(picture_data==NULL){
+    /* FIXME: return proper errors rather than printing a message. */
+    fprintf(stderr,"Error parsing picture option: %s\n",error_message);
+    return OPE_BAD_ARG;
+  }
+  comment_add(&comments->comment, &comments->comment_length, "METADATA_BLOCK_PICTURE", picture_data);
+  free(picture_data);
+  return OPE_OK;
+}
+
+
 typedef struct EncStream EncStream;
 
 struct EncStream {
@@ -183,11 +250,11 @@ static const OpusEncCallbacks stdio_callbacks = {
 };
 
 /* Create a new OggOpus file. */
-OggOpusEnc *ope_create_file(const char *path, int rate, int channels, int family, int *error) {
+OggOpusEnc *ope_create_file(const char *path, const OggOpusComments *comments, int rate, int channels, int family, int *error) {
   OggOpusEnc *enc;
   struct StdioObject *obj;
   obj = malloc(sizeof(*obj));
-  enc = ope_create_callbacks(&stdio_callbacks, obj, rate, channels, family, error);
+  enc = ope_create_callbacks(&stdio_callbacks, obj, comments, rate, channels, family, error);
   if (enc == NULL || (error && *error)) {
     return NULL;
   }
@@ -200,25 +267,21 @@ OggOpusEnc *ope_create_file(const char *path, int rate, int channels, int family
   return enc;
 }
 
-EncStream *stream_create() {
+EncStream *stream_create(const OggOpusComments *comments) {
   EncStream *stream;
   stream = malloc(sizeof(*stream));
   if (!stream) return NULL;
   stream->next = NULL;
   stream->close_at_end = 1;
   stream->serialno_is_set = 0;
-  stream->seen_file_icons = 0;
   stream->stream_is_init = 0;
   stream->header_is_frozen = 0;
   stream->granule_offset = 0;
-  stream->comment = NULL;
-  comment_init(&stream->comment, &stream->comment_length, opus_get_version_string());
-  if (!stream->comment) goto fail;
-  {
-    char encoder_string[1024];
-    snprintf(encoder_string, sizeof(encoder_string), "%s version %s", PACKAGE_NAME, PACKAGE_VERSION);
-    comment_add(&stream->comment, &stream->comment_length, "ENCODER", encoder_string);
-  }
+  stream->comment = malloc(comments->comment_length);
+  if (stream->comment == NULL) goto fail;
+  memcpy(stream->comment, comments->comment, comments->comment_length);
+  stream->comment_length = comments->comment_length;
+  stream->seen_file_icons = comments->seen_file_icons;
   return stream;
 fail:
   if (stream->comment) free(stream->comment);
@@ -236,7 +299,7 @@ static void stream_destroy(EncStream *stream) {
 
 /* Create a new OggOpus file (callback-based). */
 OggOpusEnc *ope_create_callbacks(const OpusEncCallbacks *callbacks, void *user_data,
-    int rate, int channels, int family, int *error) {
+    const OggOpusComments *comments, int rate, int channels, int family, int *error) {
   OpusMSEncoder *st=NULL;
   OggOpusEnc *enc=NULL;
   int ret;
@@ -255,7 +318,7 @@ OggOpusEnc *ope_create_callbacks(const OpusEncCallbacks *callbacks, void *user_d
 
   if ( (enc = malloc(sizeof(*enc))) == NULL) goto fail;
   enc->streams = NULL;
-  if ( (enc->streams = stream_create()) == NULL) goto fail;
+  if ( (enc->streams = stream_create(comments)) == NULL) goto fail;
   enc->streams->next = NULL;
   enc->last_stream = enc->streams;
 #ifdef USE_OGGP
@@ -322,8 +385,8 @@ fail:
 }
 
 /* Create a new OggOpus stream, pulling one page at a time. */
-OPE_EXPORT OggOpusEnc *ope_create_pull(int rate, int channels, int family, int *error) {
-  OggOpusEnc *enc = ope_create_callbacks(NULL, NULL, rate, channels, family, error);
+OPE_EXPORT OggOpusEnc *ope_create_pull(const OggOpusComments *comments, int rate, int channels, int family, int *error) {
+  OggOpusEnc *enc = ope_create_callbacks(NULL, NULL, comments, rate, channels, family, error);
   enc->pull_api = 1;
   return enc;
 }
@@ -660,13 +723,13 @@ void ope_destroy(OggOpusEnc *enc) {
 }
 
 /* Ends the stream and create a new stream within the same file. */
-int ope_chain_current(OggOpusEnc *enc) {
+int ope_chain_current(OggOpusEnc *enc, const OggOpusComments *comments) {
   enc->last_stream->close_at_end = 0;
-  return ope_continue_new_callbacks(enc, enc->last_stream->user_data);
+  return ope_continue_new_callbacks(enc, enc->last_stream->user_data, comments);
 }
 
 /* Ends the stream and create a new file. */
-int ope_continue_new_file(OggOpusEnc *enc, const char *path) {
+int ope_continue_new_file(OggOpusEnc *enc, const char *path, const OggOpusComments *comments) {
   int ret;
   struct StdioObject *obj;
   if (!(obj = malloc(sizeof(*obj)))) return OPE_ALLOC_FAIL;
@@ -676,7 +739,7 @@ int ope_continue_new_file(OggOpusEnc *enc, const char *path) {
     /* By trying to open the file first, we can recover if we can't open it. */
     return OPE_CANNOT_OPEN;
   }
-  ret = ope_continue_new_callbacks(enc, obj);
+  ret = ope_continue_new_callbacks(enc, obj, comments);
   if (ret == OPE_OK) return ret;
   fclose(obj->file);
   free(obj);
@@ -684,51 +747,16 @@ int ope_continue_new_file(OggOpusEnc *enc, const char *path) {
 }
 
 /* Ends the stream and create a new file (callback-based). */
-int ope_continue_new_callbacks(OggOpusEnc *enc, void *user_data) {
+int ope_continue_new_callbacks(OggOpusEnc *enc, void *user_data, const OggOpusComments *comments) {
   if (enc->unrecoverable) return OPE_UNRECOVERABLE;
   EncStream *new_stream;
   assert(enc->streams);
   assert(enc->last_stream);
-  new_stream = stream_create();
+  new_stream = stream_create(comments);
   if (!new_stream) return OPE_ALLOC_FAIL;
   new_stream->user_data = user_data;
   enc->last_stream->next = new_stream;
   enc->last_stream = new_stream;
-  return OPE_OK;
-}
-
-/* Add a comment to the file (can only be called before encoding samples). */
-int ope_add_comment(OggOpusEnc *enc, const char *tag, const char *val) {
-  if (enc->unrecoverable) return OPE_UNRECOVERABLE;
-  if (enc->last_stream->header_is_frozen) return OPE_TOO_LATE;
-  if (enc->last_stream->stream_is_init) return OPE_TOO_LATE;
-  if (comment_add(&enc->last_stream->comment, &enc->last_stream->comment_length, tag, val)) return OPE_ALLOC_FAIL;
-  return OPE_OK;
-}
-
-int ope_add_picture(OggOpusEnc *enc, const char *spec) {
-  const char *error_message;
-  char *picture_data;
-  if (enc->unrecoverable) return OPE_UNRECOVERABLE;
-  if (enc->last_stream->header_is_frozen) return OPE_TOO_LATE;
-  if (enc->last_stream->stream_is_init) return OPE_TOO_LATE;
-  picture_data = parse_picture_specification(spec, &error_message, &enc->last_stream->seen_file_icons);
-  if(picture_data==NULL){
-    /* FIXME: return proper errors rather than printing a message. */
-    fprintf(stderr,"Error parsing picture option: %s\n",error_message);
-    return OPE_BAD_ARG;
-  }
-  comment_add(&enc->last_stream->comment, &enc->last_stream->comment_length, "METADATA_BLOCK_PICTURE", picture_data);
-  free(picture_data);
-  return OPE_OK;
-}
-
-/* Sets the Opus comment vendor string (optional, defaults to library info). */
-int ope_set_vendor_string(OggOpusEnc *enc, const char *vendor) {
-  if (enc->unrecoverable) return OPE_UNRECOVERABLE;
-  if (enc->last_stream->header_is_frozen) return OPE_TOO_LATE;
-  if (enc->last_stream->stream_is_init) return OPE_TOO_LATE;
-  if (comment_replace_vendor_string(&enc->last_stream->comment, &enc->last_stream->comment_length, vendor)) return OPE_ALLOC_FAIL;
   return OPE_OK;
 }
 

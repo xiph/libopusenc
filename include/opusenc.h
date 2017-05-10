@@ -99,18 +99,37 @@ typedef struct {
   ope_close_func close;
 } OpusEncCallbacks;
 
+/** Opaque comments struct. */
+typedef struct OggOpusComments OggOpusComments;
+
 /** Opaque encoder struct. */
 typedef struct OggOpusEnc OggOpusEnc;
 
+/** Create a new comments object. */
+OPE_EXPORT OggOpusComments *ope_comments_create();
+
+/** Create a deep copy of a comments object. */
+OPE_EXPORT OggOpusComments *ope_comments_copy(OggOpusComments *comments);
+
+/** Destroys a comments object. */
+OPE_EXPORT void ope_comments_destroy(OggOpusComments *comments);
+
+/** Add a comment. */
+OPE_EXPORT int ope_comments_add(OggOpusComments *comments, const char *tag, const char *val);
+
+/** Add a picture. */
+OPE_EXPORT int ope_comments_add_picture(OggOpusComments *comments, const char *spec);
+
+
 /** Create a new OggOpus file. */
-OPE_EXPORT OggOpusEnc *ope_create_file(const char *path, int rate, int channels, int family, int *error);
+OPE_EXPORT OggOpusEnc *ope_create_file(const char *path, const OggOpusComments *comments, int rate, int channels, int family, int *error);
 
 /** Create a new OggOpus file (callback-based). */
 OPE_EXPORT OggOpusEnc *ope_create_callbacks(const OpusEncCallbacks *callbacks, void *user_data,
-    int rate, int channels, int family, int *error);
+    const OggOpusComments *comments, int rate, int channels, int family, int *error);
 
 /** Create a new OggOpus stream, pulling one page at a time. */
-OPE_EXPORT OggOpusEnc *ope_create_pull(int rate, int channels, int family, int *error);
+OPE_EXPORT OggOpusEnc *ope_create_pull(const OggOpusComments *comments, int rate, int channels, int family, int *error);
 
 /** Add/encode any number of float samples to the file. */
 OPE_EXPORT int ope_write_float(OggOpusEnc *enc, const float *pcm, int samples_per_channel);
@@ -128,22 +147,13 @@ OPE_EXPORT int ope_drain(OggOpusEnc *enc);
 OPE_EXPORT void ope_destroy(OggOpusEnc *enc);
 
 /** Ends the stream and create a new stream within the same file. */
-OPE_EXPORT int ope_chain_current(OggOpusEnc *enc);
+OPE_EXPORT int ope_chain_current(OggOpusEnc *enc, const OggOpusComments *comments);
 
 /** Ends the stream and create a new file. */
-OPE_EXPORT int ope_continue_new_file(OggOpusEnc *enc, const char *path);
+OPE_EXPORT int ope_continue_new_file(OggOpusEnc *enc, const char *path, const OggOpusComments *comments);
 
 /** Ends the stream and create a new file (callback-based). */
-OPE_EXPORT int ope_continue_new_callbacks(OggOpusEnc *enc, void *user_data);
-
-/** Add a comment to the file (can only be called before encoding samples). */
-OPE_EXPORT int ope_add_comment(OggOpusEnc *enc, const char *tag, const char *val);
-
-/** Add a picture to the file (can only be called before encoding samples). */
-OPE_EXPORT int ope_add_picture(OggOpusEnc *enc, const char *spec);
-
-/** Sets the Opus comment vendor string (optional, defaults to library info). */
-OPE_EXPORT int ope_set_vendor_string(OggOpusEnc *enc, const char *vendor);
+OPE_EXPORT int ope_continue_new_callbacks(OggOpusEnc *enc, void *user_data, const OggOpusComments *comments);
 
 /** Write out the header now rather than wait for audio to begin. */
 OPE_EXPORT int ope_flush_header(OggOpusEnc *enc);

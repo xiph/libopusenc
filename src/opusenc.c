@@ -119,7 +119,16 @@ void ope_comments_destroy(OggOpusComments *comments){
 
 /* Add a comment. */
 int ope_comments_add(OggOpusComments *comments, const char *tag, const char *val) {
+  if (tag == NULL || val == NULL) return OPE_BAD_ARG;
+  if (strchr(tag, '=')) return OPE_BAD_ARG;
   if (comment_add(&comments->comment, &comments->comment_length, tag, val)) return OPE_ALLOC_FAIL;
+  return OPE_OK;
+}
+
+/* Add a comment. */
+int ope_comments_add_string(OggOpusComments *comments, const char *tag_and_val) {
+  if (!strchr(tag_and_val, '=')) return OPE_BAD_ARG;
+  if (comment_add(&comments->comment, &comments->comment_length, tag_and_val, NULL)) return OPE_ALLOC_FAIL;
   return OPE_OK;
 }
 

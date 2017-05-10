@@ -106,7 +106,7 @@ typedef struct OggOpusComments OggOpusComments;
 typedef struct OggOpusEnc OggOpusEnc;
 
 /** Create a new comments object. */
-OPE_EXPORT OggOpusComments *ope_comments_create();
+OPE_EXPORT OggOpusComments *ope_comments_create(void);
 
 /** Create a deep copy of a comments object. */
 OPE_EXPORT OggOpusComments *ope_comments_copy(OggOpusComments *comments);
@@ -116,6 +116,9 @@ OPE_EXPORT void ope_comments_destroy(OggOpusComments *comments);
 
 /** Add a comment. */
 OPE_EXPORT int ope_comments_add(OggOpusComments *comments, const char *tag, const char *val);
+
+/** Add a comment. */
+OPE_EXPORT int ope_comments_add_string(OggOpusComments *comments, const char *tag_and_val);
 
 /** Add a picture. */
 OPE_EXPORT int ope_comments_add_picture(OggOpusComments *comments, const char *spec);

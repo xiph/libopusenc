@@ -431,10 +431,12 @@ static void init_stream(OggOpusEnc *enc) {
     p = oggp_get_packet_buffer(enc->oggp, 276);
     int packet_size = opus_header_to_packet(&enc->header, p, 276);
     oggp_commit_packet(enc->oggp, packet_size, 0, 0);
+    if (enc->packet_callback) enc->packet_callback(enc->streams->user_data, p, packet_size, 0);
     oe_flush_page(enc);
     p = oggp_get_packet_buffer(enc->oggp, enc->streams->comment_length);
     memcpy(p, enc->streams->comment, enc->streams->comment_length);
     oggp_commit_packet(enc->oggp, enc->streams->comment_length, 0, 0);
+    if (enc->packet_callback) enc->packet_callback(enc->streams->user_data, p, enc->streams->comment_length, 0);
     oe_flush_page(enc);
 
 #else
@@ -453,6 +455,7 @@ static void init_stream(OggOpusEnc *enc) {
     op.granulepos=0;
     op.packetno=0;
     ogg_stream_packetin(&enc->streams->os, &op);
+    if (enc->packet_callback) enc->packet_callback(enc->streams->user_data, op.packet, op.bytes, 0);
     oe_flush_page(enc);
 
     op.packet = (unsigned char *)enc->streams->comment;
@@ -462,6 +465,7 @@ static void init_stream(OggOpusEnc *enc) {
     op.granulepos = 0;
     op.packetno = 1;
     ogg_stream_packetin(&enc->streams->os, &op);
+    if (enc->packet_callback) enc->packet_callback(enc->streams->user_data, op.packet, op.bytes, 0);
     oe_flush_page(enc);
 #endif
   }

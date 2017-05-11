@@ -192,6 +192,7 @@ struct OggOpusEnc {
   int chaining_keyframe_length;
   OpusEncCallbacks callbacks;
   ope_packet_func packet_callback;
+  void *packet_callback_data;
   OpusHeader header;
   int comment_padding;
   EncStream *streams;
@@ -431,12 +432,12 @@ static void init_stream(OggOpusEnc *enc) {
     p = oggp_get_packet_buffer(enc->oggp, 276);
     int packet_size = opus_header_to_packet(&enc->header, p, 276);
     oggp_commit_packet(enc->oggp, packet_size, 0, 0);
-    if (enc->packet_callback) enc->packet_callback(enc->streams->user_data, p, packet_size, 0);
+    if (enc->packet_callback) enc->packet_callback(enc->packet_callback_data, p, packet_size, 0);
     oe_flush_page(enc);
     p = oggp_get_packet_buffer(enc->oggp, enc->streams->comment_length);
     memcpy(p, enc->streams->comment, enc->streams->comment_length);
     oggp_commit_packet(enc->oggp, enc->streams->comment_length, 0, 0);
-    if (enc->packet_callback) enc->packet_callback(enc->streams->user_data, p, enc->streams->comment_length, 0);
+    if (enc->packet_callback) enc->packet_callback(enc->packet_callback_data, p, enc->streams->comment_length, 0);
     oe_flush_page(enc);
 
 #else
@@ -455,7 +456,7 @@ static void init_stream(OggOpusEnc *enc) {
     op.granulepos=0;
     op.packetno=0;
     ogg_stream_packetin(&enc->streams->os, &op);
-    if (enc->packet_callback) enc->packet_callback(enc->streams->user_data, op.packet, op.bytes, 0);
+    if (enc->packet_callback) enc->packet_callback(enc->packet_callback_data, op.packet, op.bytes, 0);
     oe_flush_page(enc);
 
     op.packet = (unsigned char *)enc->streams->comment;
@@ -465,7 +466,7 @@ static void init_stream(OggOpusEnc *enc) {
     op.granulepos = 0;
     op.packetno = 1;
     ogg_stream_packetin(&enc->streams->os, &op);
-    if (enc->packet_callback) enc->packet_callback(enc->streams->user_data, op.packet, op.bytes, 0);
+    if (enc->packet_callback) enc->packet_callback(enc->packet_callback_data, op.packet, op.bytes, 0);
     oe_flush_page(enc);
 #endif
   }
@@ -533,7 +534,7 @@ static void encode_buffer(OggOpusEnc *enc) {
 #else
       ogg_stream_packetin(&enc->streams->os, &op);
 #endif
-      if (enc->packet_callback) enc->packet_callback(enc->streams->user_data, op.packet, op.bytes, 0);
+      if (enc->packet_callback) enc->packet_callback(enc->packet_callback_data, op.packet, op.bytes, 0);
       /* FIXME: Also flush on too many segments. */
 #ifdef USE_OGGP
       flush_needed = op.e_o_s;
@@ -586,7 +587,7 @@ static void encode_buffer(OggOpusEnc *enc) {
 #else
           ogg_stream_packetin(&enc->streams->os, &op2);
 #endif
-          if (enc->packet_callback) enc->packet_callback(enc->streams->user_data, op2.packet, op2.bytes, 0);
+          if (enc->packet_callback) enc->packet_callback(enc->packet_callback_data, op2.packet, op2.bytes, 0);
         }
         end_granule48k = (enc->streams->end_granule*48000 + enc->rate - 1)/enc->rate + enc->global_granule_offset;
         cont = 1;
@@ -811,6 +812,12 @@ int ope_encoder_ctl(OggOpusEnc *enc, int request, ...) {
       ret = opus_multistream_encoder_ctl(enc->st, request, value);
     }
     break;
+    case OPUS_GET_LOOKAHEAD_REQUEST:
+    {
+      opus_int32 *value = va_arg(ap, opus_int32*);
+      ret = opus_multistream_encoder_ctl(enc->st, request, value);
+    }
+    break;
     case OPUS_SET_EXPERT_FRAME_DURATION_REQUEST:
     {
       opus_int32 value = va_arg(ap, opus_int32);
@@ -890,7 +897,9 @@ int ope_encoder_ctl(OggOpusEnc *enc, int request, ...) {
     case OPE_SET_PACKET_CALLBACK_REQUEST:
     {
       ope_packet_func value = va_arg(ap, ope_packet_func);
+      void *data = va_arg(ap, void *);
       enc->packet_callback = value;
+      enc->packet_callback_data = data;
       ret = OPE_OK;
     }
     break;
@@ -898,7 +907,7 @@ int ope_encoder_ctl(OggOpusEnc *enc, int request, ...) {
       return OPE_UNIMPLEMENTED;
   }
   va_end(ap);
-  translate = request < 14000 || (ret < 0 && ret >= -10);
+  translate = ret != 0 && (request < 14000 || (ret < 0 && ret >= -10));
   if (translate) {
     if (ret == OPUS_BAD_ARG) ret = OPE_BAD_ARG;
     else if (ret == OPUS_INTERNAL_ERROR) ret = OPE_INTERNAL_ERROR;

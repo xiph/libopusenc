@@ -10,6 +10,15 @@ opusincludedir = ${includedir}/opus
 opusinclude_HEADERS = include/opusenc.h
 
 lib_LTLIBRARIES = libopusenc.la
+noinst_HEADERS = src/arch.h \
+		 src/ogg_packer.h \
+		 src/opus_header.h \
+		 src/os_support.h \
+		 src/picture.h \
+		 src/resample_sse.h \
+		 src/speex_resampler.h \
+		 src/stack_alloc.h
+
 libopusenc_la_SOURCES = \
 	src/ogg_packer.c \
 	src/opus_header.c \
@@ -38,8 +47,7 @@ EXTRA_DIST = \
  opusenc-uninstalled.pc.in \
  doc/Doxyfile.in \
  doc/opus_logo.svg \
- doc/Makefile \
- unix/Makefile
+ doc/Makefile
 
 # Targets to build and install just the library without the docs
 opusenc install-opusenc: NO_DOXYGEN = 1

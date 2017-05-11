@@ -85,11 +85,11 @@ extern "C" {
 #define OPE_SET_PACKET_CALLBACK(x,u) OPE_SET_PACKET_CALLBACK_REQUEST, (x), (u)
 #define OPE_GET_PACKET_CALLBACK(x,u) OPE_GET_PACKET_CALLBACK_REQUEST, (x), (u)
 
-typedef int (*ope_write_func)(void *user_data, const unsigned char *ptr, int len);
+typedef int (*ope_write_func)(void *user_data, const unsigned char *ptr, opus_int32 len);
 
 typedef int (*ope_close_func)(void *user_data);
 
-typedef int (*ope_packet_func)(void *user_data, const unsigned char *packet_ptr, int packet_len, opus_uint32 flags);
+typedef int (*ope_packet_func)(void *user_data, const unsigned char *packet_ptr, opus_int32 packet_len, opus_uint32 flags);
 
 /** Callback functions for accessing the stream. */
 typedef struct {
@@ -125,14 +125,14 @@ OPE_EXPORT int ope_comments_add_picture(OggOpusComments *comments, const char *s
 
 
 /** Create a new OggOpus file. */
-OPE_EXPORT OggOpusEnc *ope_encoder_create_file(const char *path, const OggOpusComments *comments, int rate, int channels, int family, int *error);
+OPE_EXPORT OggOpusEnc *ope_encoder_create_file(const char *path, const OggOpusComments *comments, opus_int32 rate, int channels, int family, int *error);
 
 /** Create a new OggOpus file (callback-based). */
 OPE_EXPORT OggOpusEnc *ope_encoder_create_callbacks(const OpusEncCallbacks *callbacks, void *user_data,
-    const OggOpusComments *comments, int rate, int channels, int family, int *error);
+    const OggOpusComments *comments, opus_int32 rate, int channels, int family, int *error);
 
 /** Create a new OggOpus stream, pulling one page at a time. */
-OPE_EXPORT OggOpusEnc *ope_encoder_create_pull(const OggOpusComments *comments, int rate, int channels, int family, int *error);
+OPE_EXPORT OggOpusEnc *ope_encoder_create_pull(const OggOpusComments *comments, opus_int32 rate, int channels, int family, int *error);
 
 /** Add/encode any number of float samples to the file. */
 OPE_EXPORT int ope_encoder_write_float(OggOpusEnc *enc, const float *pcm, int samples_per_channel);
@@ -141,7 +141,7 @@ OPE_EXPORT int ope_encoder_write_float(OggOpusEnc *enc, const float *pcm, int sa
 OPE_EXPORT int ope_encoder_write(OggOpusEnc *enc, const opus_int16 *pcm, int samples_per_channel);
 
 /** Get the next page from the stream. Returns 1 if there is a page available, 0 if not. */
-OPE_EXPORT int ope_encoder_get_page(OggOpusEnc *enc, unsigned char **page, int *len, int flush);
+OPE_EXPORT int ope_encoder_get_page(OggOpusEnc *enc, unsigned char **page, opus_int32 *len, int flush);
 
 /** Finalizes the stream, but does not deallocate the object. */
 OPE_EXPORT int ope_encoder_drain(OggOpusEnc *enc);

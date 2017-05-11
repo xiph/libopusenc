@@ -241,7 +241,7 @@ static void oe_flush_page(OggOpusEnc *enc) {
 #endif
 
 
-int stdio_write(void *user_data, const unsigned char *ptr, int len) {
+int stdio_write(void *user_data, const unsigned char *ptr, opus_int32 len) {
   struct StdioObject *obj = (struct StdioObject*)user_data;
   return fwrite(ptr, 1, len, obj->file) != (size_t)len;
 }
@@ -260,7 +260,7 @@ static const OpusEncCallbacks stdio_callbacks = {
 };
 
 /* Create a new OggOpus file. */
-OggOpusEnc *ope_encoder_create_file(const char *path, const OggOpusComments *comments, int rate, int channels, int family, int *error) {
+OggOpusEnc *ope_encoder_create_file(const char *path, const OggOpusComments *comments, opus_int32 rate, int channels, int family, int *error) {
   OggOpusEnc *enc;
   struct StdioObject *obj;
   obj = malloc(sizeof(*obj));
@@ -309,7 +309,7 @@ static void stream_destroy(EncStream *stream) {
 
 /* Create a new OggOpus file (callback-based). */
 OggOpusEnc *ope_encoder_create_callbacks(const OpusEncCallbacks *callbacks, void *user_data,
-    const OggOpusComments *comments, int rate, int channels, int family, int *error) {
+    const OggOpusComments *comments, opus_int32 rate, int channels, int family, int *error) {
   OpusMSEncoder *st=NULL;
   OggOpusEnc *enc=NULL;
   int ret;
@@ -395,7 +395,7 @@ fail:
 }
 
 /* Create a new OggOpus stream, pulling one page at a time. */
-OPE_EXPORT OggOpusEnc *ope_encoder_create_pull(const OggOpusComments *comments, int rate, int channels, int family, int *error) {
+OPE_EXPORT OggOpusEnc *ope_encoder_create_pull(const OggOpusComments *comments, opus_int32 rate, int channels, int family, int *error) {
   OggOpusEnc *enc = ope_encoder_create_callbacks(NULL, NULL, comments, rate, channels, family, error);
   enc->pull_api = 1;
   return enc;
@@ -685,7 +685,7 @@ int ope_encoder_write(OggOpusEnc *enc, const opus_int16 *pcm, int samples_per_ch
 }
 
 /* Get the next page from the stream. Returns 1 if there is a page available, 0 if not. */
-OPE_EXPORT int ope_encoder_get_page(OggOpusEnc *enc, unsigned char **page, int *len, int flush) {
+OPE_EXPORT int ope_encoder_get_page(OggOpusEnc *enc, unsigned char **page, opus_int32 *len, int flush) {
   if (enc->unrecoverable) return OPE_UNRECOVERABLE;
   if (!enc->pull_api) return 0;
   else {

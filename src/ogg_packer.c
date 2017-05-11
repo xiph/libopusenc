@@ -122,12 +122,12 @@ static void ogg_page_checksum_set(unsigned char *page, oggp_int32 len){
 
 typedef struct {
   oggp_uint64 granulepos;
-  int buf_pos;
-  int buf_size;
-  int lacing_pos;
-  int lacing_size;
+  size_t buf_pos;
+  size_t buf_size;
+  size_t lacing_pos;
+  size_t lacing_size;
   int flags;
-  int pageno;
+  size_t pageno;
 } oggp_page;
 
 struct oggpacker {
@@ -135,21 +135,21 @@ struct oggpacker {
   unsigned char *buf;
   unsigned char *alloc_buf;
   unsigned char *user_buf;
-  int buf_size;
-  int buf_fill;
-  int buf_begin;
+  size_t buf_size;
+  size_t buf_fill;
+  size_t buf_begin;
   unsigned char *lacing;
-  int lacing_size;
-  int lacing_fill;
-  int lacing_begin;
+  size_t lacing_size;
+  size_t lacing_fill;
+  size_t lacing_begin;
   oggp_page *pages;
-  int pages_size;
-  int pages_fill;
+  size_t pages_size;
+  size_t pages_fill;
   oggp_uint64 muxing_delay;
   int is_eos;
   oggp_uint64 curr_granule;
   oggp_uint64 last_granule;
-  int pageno;
+  size_t pageno;
 };
 
 /** Allocates an oggpacker object */
@@ -210,13 +210,11 @@ void oggp_set_muxing_delay(oggpacker *oggp, oggp_uint64 delay) {
 }
 
 static void shift_buffer(oggpacker *oggp) {
-  int buf_shift;
-  int lacing_shift;
-  int i;
+  size_t buf_shift;
+  size_t lacing_shift;
+  size_t i;
   buf_shift = oggp->pages_fill ? oggp->pages[0].buf_pos : oggp->buf_begin;
   lacing_shift = oggp->pages_fill ? oggp->pages[0].lacing_pos : oggp->lacing_begin;
-  assert(lacing_shift >= 0);
-  assert(buf_shift >= 0);
   if (4*lacing_shift > oggp->lacing_fill) {
     memmove(&oggp->lacing[0], &oggp->lacing[lacing_shift], oggp->lacing_fill-lacing_shift);
     for (i=0;i<oggp->pages_fill;i++) oggp->pages[i].lacing_pos -= lacing_shift;
@@ -264,8 +262,8 @@ unsigned char *oggp_get_packet_buffer(oggpacker *oggp, int bytes) {
     oggp_get_packet_buffer() has been filled and the number of bytes written
     has to be no more than what was originally asked for. */
 int oggp_commit_packet(oggpacker *oggp, int bytes, oggp_uint64 granulepos, int eos) {
-  int i;
-  int nb_255s;
+  size_t i;
+  size_t nb_255s;
   assert(oggp->user_buf != NULL);
   nb_255s = bytes/255;
   if (oggp->lacing_fill-oggp->lacing_begin+nb_255s+1 > 255 ||
@@ -279,7 +277,7 @@ int oggp_commit_packet(oggpacker *oggp, int bytes, oggp_uint64 granulepos, int e
 
     /* If we didn't shift the values or if we did and there's still not enough room, make some more. */
     if (oggp->lacing_fill + nb_255s + 1 > oggp->lacing_size) {
-      int newsize;
+      size_t newsize;
       unsigned char *newbuf;
       newsize = oggp->lacing_fill + nb_255s + 1;
       /* Making sure we don't need to do that too often. */
@@ -315,14 +313,14 @@ int oggp_commit_packet(oggpacker *oggp, int bytes, oggp_uint64 granulepos, int e
 int oggp_flush_page(oggpacker *oggp) {
   oggp_page *p;
   int cont = 0;
-  int nb_lacing;
+  size_t nb_lacing;
   if (oggp->lacing_fill == oggp->lacing_begin) {
     return 1;
   }
   nb_lacing = oggp->lacing_fill - oggp->lacing_begin;
   do {
     if (oggp->pages_fill >= oggp->pages_size) {
-      int newsize;
+      size_t newsize;
       oggp_page *newbuf;
       /* Making sure we don't need to do that too often. */
       newsize = 1 + oggp->pages_size*3/2;
@@ -342,7 +340,7 @@ int oggp_flush_page(oggpacker *oggp) {
     p->flags = cont;
     p->buf_pos = oggp->buf_begin;
     if (p->lacing_size > 255) {
-      int bytes=0;
+      size_t bytes=0;
       int i;
       for (i=0;i<255;i++) bytes += oggp->lacing[oggp->lacing_begin+1];
       p->buf_size = bytes;
@@ -371,7 +369,7 @@ int oggp_get_next_page(oggpacker *oggp, unsigned char **page, oggp_int32 *bytes)
   oggp_page *p;
   int i;
   unsigned char *ptr;
-  int len;
+  size_t len;
   int header_size;
   oggp_uint64 granule_pos;
   if (oggp->pages_fill == 0) {

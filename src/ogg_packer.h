@@ -39,7 +39,7 @@ typedef int oggp_int32;
 typedef struct oggpacker oggpacker;
 
 /** Allocates an oggpacker object */
-oggpacker *oggp_create(int serialno);
+oggpacker *oggp_create(oggp_int32 serialno);
 
 /** Frees memory associated with an oggpacker object */
 void oggp_destroy(oggpacker *oggp);
@@ -65,11 +65,11 @@ int oggp_flush_page(oggpacker *oggp);
 
 /** Get a pointer to the contents of the next available page. Pointer is
     invalidated on the next call to oggp_get_next_page() or oggp_commit_packet(). */
-int oggp_get_next_page(oggpacker *oggp, unsigned char **page, int *bytes);
+int oggp_get_next_page(oggpacker *oggp, unsigned char **page, oggp_int32 *bytes);
 
 /** Creates a new (chained) stream. This closes all outstanding pages. These
     pages remain available with oggp_get_next_page(). */
-int oggp_chain(oggpacker *oggp, int serialno);
+int oggp_chain(oggpacker *oggp, oggp_int32 serialno);
 
 # if defined(__cplusplus)
 }

@@ -102,9 +102,9 @@ static const oggp_uint32 crc_lookup[256]={
   0xafb010b1,0xab710d06,0xa6322bdf,0xa2f33668,
   0xbcb4666d,0xb8757bda,0xb5365d03,0xb1f740b4};
 
-static void ogg_page_checksum_set(unsigned char *page, int len){
+static void ogg_page_checksum_set(unsigned char *page, oggp_int32 len){
   oggp_uint32 crc_reg=0;
-  int i;
+  oggp_int32 i;
 
   /* safety; needed for API behavior, but not framing code */
   page[22]=0;
@@ -131,7 +131,7 @@ typedef struct {
 } oggp_page;
 
 struct oggpacker {
-  int serialno;
+  oggp_int32 serialno;
   unsigned char *buf;
   unsigned char *alloc_buf;
   unsigned char *user_buf;
@@ -153,7 +153,7 @@ struct oggpacker {
 };
 
 /** Allocates an oggpacker object */
-oggpacker *oggp_create(int serialno) {
+oggpacker *oggp_create(oggp_int32 serialno) {
   oggpacker *oggp;
   oggp = malloc(sizeof(*oggp));
   if (oggp == NULL) goto fail;
@@ -367,7 +367,7 @@ int oggp_flush_page(oggpacker *oggp) {
 
 /** Get a pointer to the contents of the next available page. Pointer is
     invalidated on the next call to oggp_get_next_page() or oggp_commit_packet(). */
-int oggp_get_next_page(oggpacker *oggp, unsigned char **page, int *bytes) {
+int oggp_get_next_page(oggpacker *oggp, unsigned char **page, oggp_int32 *bytes) {
   oggp_page *p;
   int i;
   unsigned char *ptr;
@@ -400,7 +400,7 @@ int oggp_get_next_page(oggpacker *oggp, unsigned char **page, int *bytes) {
 
   /* 32 bits of stream serial number */
   {
-    long serialno=oggp->serialno;
+    oggp_int32 serialno=oggp->serialno;
     for(i=14;i<18;i++){
       ptr[i]=(unsigned char)(serialno&0xff);
       serialno>>=8;
@@ -408,7 +408,7 @@ int oggp_get_next_page(oggpacker *oggp, unsigned char **page, int *bytes) {
   }
 
   {
-    long pageno=p->pageno;
+    oggp_int32 pageno=p->pageno;
     for(i=18;i<22;i++){
       ptr[i]=(unsigned char)(pageno&0xff);
       pageno>>=8;
@@ -429,7 +429,7 @@ int oggp_get_next_page(oggpacker *oggp, unsigned char **page, int *bytes) {
 
 /** Creates a new (chained) stream. This closes all outstanding pages. These
     pages remain available with oggp_get_next_page(). */
-int oggp_chain(oggpacker *oggp, int serialno) {
+int oggp_chain(oggpacker *oggp, oggp_int32 serialno) {
   oggp_flush_page(oggp);
   oggp->serialno = serialno;
   oggp->curr_granule = 0;

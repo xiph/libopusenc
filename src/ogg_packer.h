@@ -52,12 +52,12 @@ void oggp_set_muxing_delay(oggpacker *oggp, oggp_uint64 delay);
     size "bytes", but fewer bytes can be written. The buffer remains valid through
     a call to oggp_close_page() or oggp_get_next_page(), but is invalidated by
     another call to oggp_get_packet_buffer() or by a call to oggp_commit_packet(). */
-unsigned char *oggp_get_packet_buffer(oggpacker *oggp, int bytes);
+unsigned char *oggp_get_packet_buffer(oggpacker *oggp, oggp_int32 bytes);
 
 /** Tells the oggpacker that the packet buffer obtained from
     oggp_get_packet_buffer() has been filled and the number of bytes written
     has to be no more than what was originally asked for. */
-int oggp_commit_packet(oggpacker *oggp, int bytes, oggp_uint64 granulepos, int eos);
+int oggp_commit_packet(oggpacker *oggp, oggp_int32 bytes, oggp_uint64 granulepos, int eos);
 
 /** Create a page from the data written so far (and not yet part of a previous page).
     If there is too much data for one page, then all page continuations will be closed too. */

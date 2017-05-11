@@ -882,6 +882,7 @@ int ope_encoder_ctl(OggOpusEnc *enc, int request, ...) {
       enc->last_stream->serialno_is_set = 1;
       ret = OPE_OK;
     }
+    break;
     case OPE_SET_PACKET_CALLBACK_REQUEST:
     {
       ope_packet_func value = va_arg(ap, ope_packet_func);

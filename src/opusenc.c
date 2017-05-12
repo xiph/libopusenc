@@ -45,6 +45,9 @@
 #include "picture.h"
 #include "ogg_packer.h"
 
+/* Bump this when we change the ABI. */
+#define OPE_ABI_VERSION 0
+
 #define MAX_CHANNELS 8
 
 #define LPC_PADDING 120
@@ -919,6 +922,14 @@ int ope_encoder_ctl(OggOpusEnc *enc, int request, ...) {
   return ret;
 }
 
+const char *ope_get_version_string(void)
+{
+  return "libopusenc " PACKAGE_VERSION;
+}
+
+int ope_get_abi_version(void) {
+  return OPE_ABI_VERSION;
+}
 
 static void vorbis_lpc_from_data(float *data, float *lpci, int n, int stride);
 

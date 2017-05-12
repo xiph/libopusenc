@@ -48,6 +48,10 @@ extern "C" {
 # endif
 #endif
 
+/* Bump this when we change the API. */
+/** API version for this header. Can be used to check for features at compile time. */
+#define OPE_API_VERSION 0
+
 #define OPE_OK 0
 /* Based on the relevant libopus code minus 10. */
 #define OPE_BAD_ARG -11
@@ -163,6 +167,12 @@ OPE_EXPORT int ope_encoder_flush_header(OggOpusEnc *enc);
 
 /** Goes straight to the libopus ctl() functions. */
 OPE_EXPORT int ope_encoder_ctl(OggOpusEnc *enc, int request, ...);
+
+/** Returns a string representing the version of libopusenc being used at run time. */
+OPE_EXPORT const char *ope_get_version_string(void);
+
+/** ABI version for this header. Can be used to check for features at run time. */
+OPE_EXPORT int ope_get_abi_version(void);
 
 # if defined(__cplusplus)
 }

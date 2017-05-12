@@ -443,7 +443,6 @@ static void encode_buffer(OggOpusEnc *enc) {
       memcpy(p, packet, nbBytes);
       oggp_commit_packet(enc->oggp, nbBytes, granulepos, e_o_s);
       if (enc->packet_callback) enc->packet_callback(enc->packet_callback_data, packet, nbBytes, 0);
-      /* FIXME: Also flush on too many segments. */
       if (e_o_s) oe_flush_page(enc);
       else if (!enc->pull_api) output_pages(enc);
       if (e_o_s) {

@@ -13,7 +13,6 @@ lib_LTLIBRARIES = libopusenc.la
 noinst_HEADERS = src/arch.h \
 		 src/ogg_packer.h \
 		 src/opus_header.h \
-		 src/os_support.h \
 		 src/picture.h \
 		 src/resample_sse.h \
 		 src/speex_resampler.h \

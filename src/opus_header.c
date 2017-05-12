@@ -69,7 +69,7 @@ typedef struct {
    int pos;
 } ROPacket;
 
-static int write_uint32(Packet *p, ogg_uint32_t val)
+static int write_uint32(Packet *p, opus_uint32 val)
 {
    if (p->pos>p->maxlen-4)
       return 0;
@@ -81,7 +81,7 @@ static int write_uint32(Packet *p, ogg_uint32_t val)
    return 1;
 }
 
-static int write_uint16(Packet *p, ogg_uint16_t val)
+static int write_uint16(Packet *p, opus_uint16 val)
 {
    if (p->pos>p->maxlen-2)
       return 0;

@@ -29,13 +29,13 @@
 #define OPUS_HEADER_H
 
 #include <stdlib.h>
-#include <ogg/ogg.h>
+#include <opus.h>
 
 typedef struct {
    int version;
    int channels; /* Number of channels: 1..255 */
    int preskip;
-   ogg_uint32_t input_sample_rate;
+   opus_uint32 input_sample_rate;
    int gain; /* in dB S7.8 should be zero whenever possible */
    int channel_mapping;
    /* The rest is only used if channel_mapping != 0 */

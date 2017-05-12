@@ -1,7 +1,7 @@
 #ifndef __PICTURE_H
 #define __PICTURE_H
 
-#include <ogg/ogg.h>
+#include <opus.h>
 
 typedef enum{
   PIC_FORMAT_JPEG,
@@ -22,16 +22,16 @@ int is_png(const unsigned char *buf, size_t length);
 int is_gif(const unsigned char *buf, size_t length);
 
 void extract_png_params(const unsigned char *data, size_t data_length,
-                        ogg_uint32_t *width, ogg_uint32_t *height,
-                        ogg_uint32_t *depth, ogg_uint32_t *colors,
+                        opus_uint32 *width, opus_uint32 *height,
+                        opus_uint32 *depth, opus_uint32 *colors,
                         int *has_palette);
 void extract_gif_params(const unsigned char *data, size_t data_length,
-                        ogg_uint32_t *width, ogg_uint32_t *height,
-                        ogg_uint32_t *depth, ogg_uint32_t *colors,
+                        opus_uint32 *width, opus_uint32 *height,
+                        opus_uint32 *depth, opus_uint32 *colors,
                         int *has_palette);
 void extract_jpeg_params(const unsigned char *data, size_t data_length,
-                         ogg_uint32_t *width, ogg_uint32_t *height,
-                         ogg_uint32_t *depth, ogg_uint32_t *colors,
+                         opus_uint32 *width, opus_uint32 *height,
+                         opus_uint32 *depth, opus_uint32 *colors,
                          int *has_palette);
 
 char *parse_picture_specification(const char *spec,

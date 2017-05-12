@@ -38,6 +38,7 @@
 #include <stdio.h>
 #include <string.h>
 #include <assert.h>
+#include <ogg/ogg.h>
 #include <opus_multistream.h>
 #include "opusenc.h"
 #include "opus_header.h"
@@ -161,8 +162,8 @@ struct EncStream {
   int seen_file_icons;
   int close_at_end;
   int header_is_frozen;
-  ogg_int64_t end_granule;
-  ogg_int64_t granule_offset;
+  opus_int64 end_granule;
+  opus_int64 granule_offset;
   EncStream *next;
 };
 
@@ -181,9 +182,9 @@ struct OggOpusEnc {
   int decision_delay;
   int max_ogg_delay;
   int global_granule_offset;
-  ogg_int64_t curr_granule;
-  ogg_int64_t write_granule;
-  ogg_int64_t last_page_granule;
+  opus_int64 curr_granule;
+  opus_int64 write_granule;
+  opus_int64 last_page_granule;
   unsigned char *chaining_keyframe;
   int chaining_keyframe_length;
   OpusEncCallbacks callbacks;
@@ -408,7 +409,7 @@ static void shift_buffer(OggOpusEnc *enc) {
 
 static void encode_buffer(OggOpusEnc *enc) {
   /* Round up when converting the granule pos because the decoder will round down. */
-  ogg_int64_t end_granule48k = (enc->streams->end_granule*48000 + enc->rate - 1)/enc->rate + enc->global_granule_offset;
+  opus_int64 end_granule48k = (enc->streams->end_granule*48000 + enc->rate - 1)/enc->rate + enc->global_granule_offset;
   while (enc->buffer_end-enc->buffer_start > enc->frame_size + enc->decision_delay) {
     int cont;
     opus_int32 pred;

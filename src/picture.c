@@ -125,14 +125,14 @@ int is_gif(const unsigned char *buf, size_t length){
    PNG.
   On failure, simply leaves its outputs unmodified.*/
 void extract_png_params(const unsigned char *data, size_t data_length,
-                        ogg_uint32_t *width, ogg_uint32_t *height,
-                        ogg_uint32_t *depth, ogg_uint32_t *colors,
+                        opus_uint32 *width, opus_uint32 *height,
+                        opus_uint32 *depth, opus_uint32 *colors,
                         int *has_palette){
   if(is_png(data,data_length)){
     size_t offs;
     offs=8;
     while(data_length-offs>=12){
-      ogg_uint32_t chunk_len;
+      opus_uint32 chunk_len;
       chunk_len=READ_U32_BE(data+offs);
       if(chunk_len>data_length-(offs+12))break;
       else if(chunk_len==13&&memcmp(data+offs+4,"IHDR",4)==0){
@@ -169,8 +169,8 @@ void extract_png_params(const unsigned char *data, size_t data_length,
    GIF.
   On failure, simply leaves its outputs unmodified.*/
 void extract_gif_params(const unsigned char *data, size_t data_length,
-                        ogg_uint32_t *width, ogg_uint32_t *height,
-                        ogg_uint32_t *depth, ogg_uint32_t *colors,
+                        opus_uint32 *width, opus_uint32 *height,
+                        opus_uint32 *depth, opus_uint32 *colors,
                         int *has_palette){
   if(is_gif(data,data_length)&&data_length>=14){
     *width=data[6]|data[7]<<8;
@@ -187,8 +187,8 @@ void extract_gif_params(const unsigned char *data, size_t data_length,
    JPEG.
   On failure, simply leaves its outputs unmodified.*/
 void extract_jpeg_params(const unsigned char *data, size_t data_length,
-                         ogg_uint32_t *width, ogg_uint32_t *height,
-                         ogg_uint32_t *depth, ogg_uint32_t *colors,
+                         opus_uint32 *width, opus_uint32 *height,
+                         opus_uint32 *depth, opus_uint32 *colors,
                          int *has_palette){
   if(is_jpeg(data,data_length)){
     size_t offs;
@@ -349,10 +349,10 @@ char *parse_picture_specification(const char *spec,
     memcpy(buf+data_offset,filename,data_length);
   }
   else{
-    ogg_uint32_t file_width;
-    ogg_uint32_t file_height;
-    ogg_uint32_t file_depth;
-    ogg_uint32_t file_colors;
+    opus_uint32 file_width;
+    opus_uint32 file_height;
+    opus_uint32 file_depth;
+    opus_uint32 file_colors;
     int          has_palette;
     /*Complicated case: we have a real file.
       Read it in, attempt to parse the media type and image dimensions if

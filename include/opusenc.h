@@ -32,7 +32,7 @@
 extern "C" {
 # endif
 
-#include "opus.h"
+#include <opus.h>
 
 #ifndef OPE_EXPORT
 # if defined(WIN32)

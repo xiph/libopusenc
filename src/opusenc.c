@@ -654,6 +654,7 @@ int ope_encoder_continue_new_callbacks(OggOpusEnc *enc, void *user_data, const O
   new_stream = stream_create(comments);
   if (!new_stream) return OPE_ALLOC_FAIL;
   new_stream->user_data = user_data;
+  new_stream->end_granule = enc->write_granule;
   enc->last_stream->next = new_stream;
   enc->last_stream = new_stream;
   return OPE_OK;

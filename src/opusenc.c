@@ -48,8 +48,6 @@
 /* Bump this when we change the ABI. */
 #define OPE_ABI_VERSION 0
 
-#define MAX_CHANNELS 8
-
 #define LPC_PADDING 120
 #define LPC_ORDER 24
 #define LPC_INPUT 480
@@ -527,7 +525,7 @@ int ope_encoder_write_float(OggOpusEnc *enc, const float *pcm, int samples_per_c
   return OPE_OK;
 }
 
-#define CONVERT_BUFFER 256
+#define CONVERT_BUFFER 4096
 
 /* Add/encode any number of int16 samples to the file. */
 int ope_encoder_write(OggOpusEnc *enc, const opus_int16 *pcm, int samples_per_channel) {
@@ -543,8 +541,8 @@ int ope_encoder_write(OggOpusEnc *enc, const opus_int16 *pcm, int samples_per_ch
     spx_uint32_t in_samples, out_samples;
     out_samples = BUFFER_SAMPLES-enc->buffer_end;
     if (enc->re != NULL) {
-      float buf[CONVERT_BUFFER*MAX_CHANNELS];
-      in_samples = MIN(CONVERT_BUFFER, samples_per_channel);
+      float buf[CONVERT_BUFFER];
+      in_samples = MIN(CONVERT_BUFFER/channels, samples_per_channel);
       for (i=0;i<channels*(int)in_samples;i++) {
         buf[i] = (1.f/32768)*pcm[i];
       }

@@ -27,6 +27,28 @@
 #if !defined(_opusenc_h)
 # define _opusenc_h (1)
 
+/**\mainpage
+   \section Introduction
+
+   This is the documentation for the <tt>libopusenc</tt> C API.
+
+   The <tt>libopusenc</tt> package provides a convenient high-level API for
+   encoding Ogg Opus files.
+
+   \section Organization
+
+   The main API is divided into several sections:
+   - \ref encoding
+   - \ref comments
+   - \ref encoder_ctl
+   - \ref callbacks
+   - \ref error_codes
+
+   \section Overview
+
+   The <tt>libopusfile</tt> API provides an easy way to encode Ogg Opus files using
+   <tt>libopus</tt>.
+*/
 
 # if defined(__cplusplus)
 extern "C" {
@@ -48,6 +70,17 @@ extern "C" {
 # endif
 #endif
 
+/**\defgroup error_codes Error Codes*/
+/*@{*/
+/**\name List of possible error codes
+   Many of the functions in this library return a negative error code when a
+    function fails.
+   This list provides a brief explanation of the common errors.
+   See each individual function for more details on what a specific error code
+    means in that context.*/
+/*@{*/
+
+
 /* Bump this when we change the API. */
 /** API version for this header. Can be used to check for features at compile time. */
 #define OPE_API_VERSION 0
@@ -63,6 +96,8 @@ extern "C" {
 #define OPE_CANNOT_OPEN -30
 #define OPE_TOO_LATE -31
 #define OPE_UNRECOVERABLE -32
+/*@}*/
+/*@}*/
 
 
 /* These are the "raw" request values -- they should usually not be used. */
@@ -77,6 +112,14 @@ extern "C" {
 #define OPE_SET_PACKET_CALLBACK_REQUEST     14008
 #define OPE_GET_PACKET_CALLBACK_REQUEST     14009
 
+/**\defgroup encoder_ctl Encoding Options*/
+/*@{*/
+
+/**\name Control parameters
+
+   Macros for setting encoder options.*/
+/*@{*/
+
 #define OPE_SET_DECISION_DELAY(x) OPE_SET_DECISION_DELAY_REQUEST, __opus_check_int(x)
 #define OPE_GET_DECISION_DELAY(x) OPE_GET_DECISION_DELAY_REQUEST, __opus_check_int_ptr(x)
 #define OPE_SET_MUXING_DELAY(x) OPE_SET_MUXING_DELAY_REQUEST, __opus_check_int(x)
@@ -88,11 +131,24 @@ extern "C" {
 /* FIXME: Add type-checking macros to these. */
 #define OPE_SET_PACKET_CALLBACK(x,u) OPE_SET_PACKET_CALLBACK_REQUEST, (x), (u)
 #define OPE_GET_PACKET_CALLBACK(x,u) OPE_GET_PACKET_CALLBACK_REQUEST, (x), (u)
+/*@}*/
+/*@}*/
 
+/**\defgroup callbacks Callback Functions */
+/*@{*/
+
+/**\name Callback functions
+
+   These are the callbacks that can be implemented for an encoder.*/
+/*@{*/
+
+/** Called for writing a page. */
 typedef int (*ope_write_func)(void *user_data, const unsigned char *ptr, opus_int32 len);
 
+/** Called for closing a stream. */
 typedef int (*ope_close_func)(void *user_data);
 
+/** Called on every packet encoded (including header). */
 typedef int (*ope_packet_func)(void *user_data, const unsigned char *packet_ptr, opus_int32 packet_len, opus_uint32 flags);
 
 /** Callback functions for accessing the stream. */
@@ -102,12 +158,22 @@ typedef struct {
   /** Callback for closing the stream. */
   ope_close_func close;
 } OpusEncCallbacks;
+/*@}*/
+/*@}*/
 
 /** Opaque comments struct. */
 typedef struct OggOpusComments OggOpusComments;
 
 /** Opaque encoder struct. */
 typedef struct OggOpusEnc OggOpusEnc;
+
+/**\defgroup comments Comments Handling */
+/*@{*/
+
+/**\name Functions for handling comments
+
+   These functions make it possible to add comments and pictures to Ogg Opus files.*/
+/*@{*/
 
 /** Create a new comments object. */
 OPE_EXPORT OggOpusComments *ope_comments_create(void);
@@ -127,6 +193,16 @@ OPE_EXPORT int ope_comments_add_string(OggOpusComments *comments, const char *ta
 /** Add a picture. */
 OPE_EXPORT int ope_comments_add_picture(OggOpusComments *comments, const char *spec);
 
+/*@}*/
+/*@}*/
+
+/**\defgroup encoding Encoding */
+/*@{*/
+
+/**\name Functions for encoding Ogg Opus files
+
+   These functions make it possible to encode Ogg Opus files.*/
+/*@{*/
 
 /** Create a new OggOpus file. */
 OPE_EXPORT OggOpusEnc *ope_encoder_create_file(const char *path, const OggOpusComments *comments, opus_int32 rate, int channels, int family, int *error);
@@ -173,6 +249,9 @@ OPE_EXPORT const char *ope_get_version_string(void);
 
 /** ABI version for this header. Can be used to check for features at run time. */
 OPE_EXPORT int ope_get_abi_version(void);
+
+/*@}*/
+/*@}*/
 
 # if defined(__cplusplus)
 }

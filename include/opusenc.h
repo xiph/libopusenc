@@ -175,22 +175,39 @@ typedef struct OggOpusEnc OggOpusEnc;
    These functions make it possible to add comments and pictures to Ogg Opus files.*/
 /*@{*/
 
-/** Create a new comments object. */
+/** Create a new comments object. 
+    \return Newly-created comments object. */
 OPE_EXPORT OggOpusComments *ope_comments_create(void);
 
-/** Create a deep copy of a comments object. */
+/** Create a deep copy of a comments object.
+    \param comments Comments object to copy
+    \return Deep copy of input. */
 OPE_EXPORT OggOpusComments *ope_comments_copy(OggOpusComments *comments);
 
-/** Destroys a comments object. */
+/** Destroys a comments object. 
+    \param comments Comments object to destroy*/
 OPE_EXPORT void ope_comments_destroy(OggOpusComments *comments);
 
-/** Add a comment. */
+/** Add a comment. 
+    \param[in,out] comments Where to add the comments
+    \param         tag      Tag for the comment (must not contain = char)
+    \param         val    Value for the tag
+    \return Error code
+ */
 OPE_EXPORT int ope_comments_add(OggOpusComments *comments, const char *tag, const char *val);
 
-/** Add a comment. */
+/** Add a comment as a single tag=value string. 
+    \param[in,out] comments    Where to add the comments
+    \param         tag_and_val string of the form tag=value (must contain = char)
+    \return Error code
+ */
 OPE_EXPORT int ope_comments_add_string(OggOpusComments *comments, const char *tag_and_val);
 
-/** Add a picture. */
+/** Add a picture. 
+    \param[in,out] comments    Where to add the comments
+    \param         spec        Spec string for the picture
+    \return Error code
+ */
 OPE_EXPORT int ope_comments_add_picture(OggOpusComments *comments, const char *spec);
 
 /*@}*/
@@ -204,50 +221,116 @@ OPE_EXPORT int ope_comments_add_picture(OggOpusComments *comments, const char *s
    These functions make it possible to encode Ogg Opus files.*/
 /*@{*/
 
-/** Create a new OggOpus file. */
+/** Create a new OggOpus file.
+    \param path       Path where to create the file
+    \param comments   Comments associated with the stream
+    \param rate       Input sampling rate (48 kHz is faster)
+    \param channels   Number of channels
+    \param family     Mapping family (0 for mono/stereo, 1 for surround)
+    \param[out] error Error code (NULL if no error is to be returned)
+    \return Newly-created encoder.
+    */
 OPE_EXPORT OggOpusEnc *ope_encoder_create_file(const char *path, const OggOpusComments *comments, opus_int32 rate, int channels, int family, int *error);
 
-/** Create a new OggOpus file (callback-based). */
+/** Create a new OggOpus stream to be handled using callbacks
+    \param callbacks  Callback functions
+    \param user_data  Pointer to be associated with the stream and passed to the callbacks
+    \param comments   Comments associated with the stream
+    \param rate       Input sampling rate (48 kHz is faster)
+    \param channels   Number of channels
+    \param family     Mapping family (0 for mono/stereo, 1 for surround)
+    \param[out] error Error code (NULL if no error is to be returned)
+    \return Newly-created encoder.
+    */
 OPE_EXPORT OggOpusEnc *ope_encoder_create_callbacks(const OpusEncCallbacks *callbacks, void *user_data,
     const OggOpusComments *comments, opus_int32 rate, int channels, int family, int *error);
 
-/** Create a new OggOpus stream, pulling one page at a time. */
+/** Create a new OggOpus stream to be used along with.ope_encoder_get_page().
+  This is mostly useful for muxing with other streams.
+    \param comments   Comments associated with the stream
+    \param rate       Input sampling rate (48 kHz is faster)
+    \param channels   Number of channels
+    \param family     Mapping family (0 for mono/stereo, 1 for surround)
+    \param[out] error Error code (NULL if no error is to be returned)
+    \return Newly-created encoder.
+    */
 OPE_EXPORT OggOpusEnc *ope_encoder_create_pull(const OggOpusComments *comments, opus_int32 rate, int channels, int family, int *error);
 
-/** Add/encode any number of float samples to the file. */
+/** Add/encode any number of float samples to the stream.
+    \param[in,out] enc         Encoder
+    \param pcm                 Floating-point PCM values in the +/-1 range (interleaved if multiple channels)
+    \param samples_per_channel Number of samples for each channel
+    \return Error code*/
 OPE_EXPORT int ope_encoder_write_float(OggOpusEnc *enc, const float *pcm, int samples_per_channel);
 
-/** Add/encode any number of int16 samples to the file. */
+/** Add/encode any number of 16-bit linear samples to the stream.
+    \param[in,out] enc         Encoder
+    \param pcm                 Linear 16-bit PCM values in the [-32768,32767] range (interleaved if multiple channels)
+    \param samples_per_channel Number of samples for each channel
+    \return Error code*/
 OPE_EXPORT int ope_encoder_write(OggOpusEnc *enc, const opus_int16 *pcm, int samples_per_channel);
 
-/** Get the next page from the stream. Returns 1 if there is a page available, 0 if not. */
+/** Get the next page from the stream (only if using ope_encoder_create_pull()).
+    \param[in,out] enc Encoder
+    \param[out] page   Next available encoded page
+    \param[out] len    Size (in bytes) of the page returned
+    \param flush       If non-zero, forces a flush of the page (if any data avaiable)
+    \return 1 if there is a page available, 0 if not. */
 OPE_EXPORT int ope_encoder_get_page(OggOpusEnc *enc, unsigned char **page, opus_int32 *len, int flush);
 
-/** Finalizes the stream, but does not deallocate the object. */
+/** Finalizes the stream, but does not deallocate the object.
+    \param[in,out] enc Encoder
+    \return Error code
+ */
 OPE_EXPORT int ope_encoder_drain(OggOpusEnc *enc);
 
-/** Deallocates the obect. Make sure to ope_drain() first. */
+/** Deallocates the obect. Make sure to ope_drain() first.
+    \param[in,out] enc Encoder
+ */
 OPE_EXPORT void ope_encoder_destroy(OggOpusEnc *enc);
 
-/** Ends the stream and create a new stream within the same file. */
+/** Ends the stream and create a new stream within the same file.
+    \param[in,out] enc Encoder
+    \param comments   Comments associated with the stream
+    \return Error code
+ */
 OPE_EXPORT int ope_encoder_chain_current(OggOpusEnc *enc, const OggOpusComments *comments);
 
-/** Ends the stream and create a new file. */
+/** Ends the stream and create a new file.
+    \param[in,out] enc Encoder
+    \param path        Path where to write the new file
+    \param comments    Comments associated with the stream
+    \return Error code
+ */
 OPE_EXPORT int ope_encoder_continue_new_file(OggOpusEnc *enc, const char *path, const OggOpusComments *comments);
 
-/** Ends the stream and create a new file (callback-based). */
+/** Ends the stream and create a new file (callback-based).
+    \param[in,out] enc Encoder
+    \param user_data   Pointer to be associated with the new stream and passed to the callbacks
+    \param comments    Comments associated with the stream
+    \return Error code
+ */
 OPE_EXPORT int ope_encoder_continue_new_callbacks(OggOpusEnc *enc, void *user_data, const OggOpusComments *comments);
 
-/** Write out the header now rather than wait for audio to begin. */
+/** Write out the header now rather than wait for audio to begin.
+    \param[in,out] enc Encoder
+    \return Error code
+ */
 OPE_EXPORT int ope_encoder_flush_header(OggOpusEnc *enc);
 
-/** Goes straight to the libopus ctl() functions. */
+/** Sets encoder options.
+    \param[in,out] enc Encoder
+    \param request     Use a request macro
+    \return Error code
+ */
 OPE_EXPORT int ope_encoder_ctl(OggOpusEnc *enc, int request, ...);
 
-/** Returns a string representing the version of libopusenc being used at run time. */
+/** Returns a string representing the version of libopusenc being used at run time.
+    \return A string describing the version of this library */
 OPE_EXPORT const char *ope_get_version_string(void);
 
-/** ABI version for this header. Can be used to check for features at run time. */
+/** ABI version for this header. Can be used to check for features at run time.
+    \return An integer representing the ABI version */
 OPE_EXPORT int ope_get_abi_version(void);
 
 /*@}*/

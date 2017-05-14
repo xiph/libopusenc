@@ -230,7 +230,7 @@ OPE_EXPORT int ope_comments_add_picture(OggOpusComments *comments, const char *s
     \param[out] error Error code (NULL if no error is to be returned)
     \return Newly-created encoder.
     */
-OPE_EXPORT OggOpusEnc *ope_encoder_create_file(const char *path, const OggOpusComments *comments, opus_int32 rate, int channels, int family, int *error);
+OPE_EXPORT OggOpusEnc *ope_encoder_create_file(const char *path, OggOpusComments *comments, opus_int32 rate, int channels, int family, int *error);
 
 /** Create a new OggOpus stream to be handled using callbacks
     \param callbacks  Callback functions
@@ -243,7 +243,7 @@ OPE_EXPORT OggOpusEnc *ope_encoder_create_file(const char *path, const OggOpusCo
     \return Newly-created encoder.
     */
 OPE_EXPORT OggOpusEnc *ope_encoder_create_callbacks(const OpusEncCallbacks *callbacks, void *user_data,
-    const OggOpusComments *comments, opus_int32 rate, int channels, int family, int *error);
+    OggOpusComments *comments, opus_int32 rate, int channels, int family, int *error);
 
 /** Create a new OggOpus stream to be used along with.ope_encoder_get_page().
   This is mostly useful for muxing with other streams.
@@ -254,7 +254,7 @@ OPE_EXPORT OggOpusEnc *ope_encoder_create_callbacks(const OpusEncCallbacks *call
     \param[out] error Error code (NULL if no error is to be returned)
     \return Newly-created encoder.
     */
-OPE_EXPORT OggOpusEnc *ope_encoder_create_pull(const OggOpusComments *comments, opus_int32 rate, int channels, int family, int *error);
+OPE_EXPORT OggOpusEnc *ope_encoder_create_pull(OggOpusComments *comments, opus_int32 rate, int channels, int family, int *error);
 
 /** Add/encode any number of float samples to the stream.
     \param[in,out] enc         Encoder
@@ -294,7 +294,7 @@ OPE_EXPORT void ope_encoder_destroy(OggOpusEnc *enc);
     \param comments   Comments associated with the stream
     \return Error code
  */
-OPE_EXPORT int ope_encoder_chain_current(OggOpusEnc *enc, const OggOpusComments *comments);
+OPE_EXPORT int ope_encoder_chain_current(OggOpusEnc *enc, OggOpusComments *comments);
 
 /** Ends the stream and create a new file.
     \param[in,out] enc Encoder
@@ -302,7 +302,7 @@ OPE_EXPORT int ope_encoder_chain_current(OggOpusEnc *enc, const OggOpusComments 
     \param comments    Comments associated with the stream
     \return Error code
  */
-OPE_EXPORT int ope_encoder_continue_new_file(OggOpusEnc *enc, const char *path, const OggOpusComments *comments);
+OPE_EXPORT int ope_encoder_continue_new_file(OggOpusEnc *enc, const char *path, OggOpusComments *comments);
 
 /** Ends the stream and create a new file (callback-based).
     \param[in,out] enc Encoder
@@ -310,7 +310,7 @@ OPE_EXPORT int ope_encoder_continue_new_file(OggOpusEnc *enc, const char *path, 
     \param comments    Comments associated with the stream
     \return Error code
  */
-OPE_EXPORT int ope_encoder_continue_new_callbacks(OggOpusEnc *enc, void *user_data, const OggOpusComments *comments);
+OPE_EXPORT int ope_encoder_continue_new_callbacks(OggOpusEnc *enc, void *user_data, OggOpusComments *comments);
 
 /** Write out the header now rather than wait for audio to begin.
     \param[in,out] enc Encoder

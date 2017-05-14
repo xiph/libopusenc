@@ -222,7 +222,7 @@ static const OpusEncCallbacks stdio_callbacks = {
 };
 
 /* Create a new OggOpus file. */
-OggOpusEnc *ope_encoder_create_file(const char *path, const OggOpusComments *comments, opus_int32 rate, int channels, int family, int *error) {
+OggOpusEnc *ope_encoder_create_file(const char *path, OggOpusComments *comments, opus_int32 rate, int channels, int family, int *error) {
   OggOpusEnc *enc;
   struct StdioObject *obj;
   obj = malloc(sizeof(*obj));
@@ -239,7 +239,7 @@ OggOpusEnc *ope_encoder_create_file(const char *path, const OggOpusComments *com
   return enc;
 }
 
-EncStream *stream_create(const OggOpusComments *comments) {
+EncStream *stream_create(OggOpusComments *comments) {
   EncStream *stream;
   stream = malloc(sizeof(*stream));
   if (!stream) return NULL;
@@ -268,7 +268,7 @@ static void stream_destroy(EncStream *stream) {
 
 /* Create a new OggOpus file (callback-based). */
 OggOpusEnc *ope_encoder_create_callbacks(const OpusEncCallbacks *callbacks, void *user_data,
-    const OggOpusComments *comments, opus_int32 rate, int channels, int family, int *error) {
+    OggOpusComments *comments, opus_int32 rate, int channels, int family, int *error) {
   OpusMSEncoder *st=NULL;
   OggOpusEnc *enc=NULL;
   int ret;
@@ -352,7 +352,7 @@ fail:
 }
 
 /* Create a new OggOpus stream, pulling one page at a time. */
-OPE_EXPORT OggOpusEnc *ope_encoder_create_pull(const OggOpusComments *comments, opus_int32 rate, int channels, int family, int *error) {
+OPE_EXPORT OggOpusEnc *ope_encoder_create_pull(OggOpusComments *comments, opus_int32 rate, int channels, int family, int *error) {
   OggOpusEnc *enc = ope_encoder_create_callbacks(NULL, NULL, comments, rate, channels, family, error);
   enc->pull_api = 1;
   return enc;
@@ -612,13 +612,13 @@ void ope_encoder_destroy(OggOpusEnc *enc) {
 }
 
 /* Ends the stream and create a new stream within the same file. */
-int ope_encoder_chain_current(OggOpusEnc *enc, const OggOpusComments *comments) {
+int ope_encoder_chain_current(OggOpusEnc *enc, OggOpusComments *comments) {
   enc->last_stream->close_at_end = 0;
   return ope_encoder_continue_new_callbacks(enc, enc->last_stream->user_data, comments);
 }
 
 /* Ends the stream and create a new file. */
-int ope_encoder_continue_new_file(OggOpusEnc *enc, const char *path, const OggOpusComments *comments) {
+int ope_encoder_continue_new_file(OggOpusEnc *enc, const char *path, OggOpusComments *comments) {
   int ret;
   struct StdioObject *obj;
   if (!(obj = malloc(sizeof(*obj)))) return OPE_ALLOC_FAIL;
@@ -636,7 +636,7 @@ int ope_encoder_continue_new_file(OggOpusEnc *enc, const char *path, const OggOp
 }
 
 /* Ends the stream and create a new file (callback-based). */
-int ope_encoder_continue_new_callbacks(OggOpusEnc *enc, void *user_data, const OggOpusComments *comments) {
+int ope_encoder_continue_new_callbacks(OggOpusEnc *enc, void *user_data, OggOpusComments *comments) {
   if (enc->unrecoverable) return OPE_UNRECOVERABLE;
   EncStream *new_stream;
   assert(enc->streams);

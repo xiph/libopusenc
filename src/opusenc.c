@@ -762,7 +762,10 @@ int ope_encoder_ctl(OggOpusEnc *enc, int request, ...) {
     case OPE_SET_SERIALNO_REQUEST:
     {
       opus_int32 value = va_arg(ap, opus_int32);
-      if (enc->last_stream->header_is_frozen) return OPE_TOO_LATE;
+      if (!enc->last_stream || enc->last_stream->header_is_frozen) {
+        ret = OPE_TOO_LATE;
+        break;
+      }
       enc->last_stream->serialno = value;
       enc->last_stream->serialno_is_set = 1;
       ret = OPE_OK;
@@ -777,8 +780,19 @@ int ope_encoder_ctl(OggOpusEnc *enc, int request, ...) {
       ret = OPE_OK;
     }
     break;
+    case OPE_SET_HEADER_GAIN_REQUEST:
+    {
+      opus_int32 value = va_arg(ap, opus_int32);
+      if (!enc->last_stream || enc->last_stream->header_is_frozen) {
+        ret = OPE_TOO_LATE;
+        break;
+      }
+      enc->header.gain = value;
+      ret = OPE_OK;
+    }
+    break;
     default:
-      return OPE_UNIMPLEMENTED;
+      ret = OPE_UNIMPLEMENTED;
   }
   va_end(ap);
   translate = ret != 0 && (request < 14000 || (ret < 0 && ret >= -10));

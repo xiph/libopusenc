@@ -111,6 +111,8 @@ extern "C" {
 #define OPE_GET_SERIALNO_REQUEST            14007
 #define OPE_SET_PACKET_CALLBACK_REQUEST     14008
 #define OPE_GET_PACKET_CALLBACK_REQUEST     14009
+#define OPE_SET_HEADER_GAIN_REQUEST         14010
+#define OPE_GET_HEADER_GAIN_REQUEST         14011
 
 /**\defgroup encoder_ctl Encoding Options*/
 /*@{*/
@@ -131,6 +133,8 @@ extern "C" {
 /* FIXME: Add type-checking macros to these. */
 #define OPE_SET_PACKET_CALLBACK(x,u) OPE_SET_PACKET_CALLBACK_REQUEST, (x), (u)
 #define OPE_GET_PACKET_CALLBACK(x,u) OPE_GET_PACKET_CALLBACK_REQUEST, (x), (u)
+#define OPE_SET_HEADER_GAIN(x,u) OPE_SET_HEADER_GAIN_REQUEST, (x), (u)
+#define OPE_GET_HEADER_GAIN(x,u) OPE_GET_HEADER_GAIN_REQUEST, (x), (u)
 /*@}*/
 /*@}*/
 

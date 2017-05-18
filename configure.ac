@@ -110,6 +110,8 @@ AC_ARG_ENABLE([float],
   AS_HELP_STRING([--disable-float], [Disable floating-point API]),,
   enable_float=yes)
 
+AC_DEFINE([RESAMPLE_FULL_SINC_TABLE], [1], [Faster, takes more memory])
+
 AS_IF([test "$enable_float" = "no"],
   [enable_fixed_point=yes
    AC_DEFINE([OP_DISABLE_FLOAT_API], [1], [Disable floating-point API])

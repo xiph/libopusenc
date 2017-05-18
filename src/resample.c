@@ -96,7 +96,7 @@ static void speex_free (void *ptr) {free(ptr);}
 #define UINT32_MAX 4294967296U
 #endif
 
-#ifdef _USE_SSE
+#if defined(__SSE__) && !defined(FIXED_POINT)
 #include "resample_sse.h"
 #endif
 

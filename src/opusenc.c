@@ -129,10 +129,10 @@ int ope_comments_add_string(OggOpusComments *comments, const char *tag_and_val) 
   return OPE_OK;
 }
 
-int ope_comments_add_picture(OggOpusComments *comments, const char *spec) {
+int ope_comments_add_picture(OggOpusComments *comments, const char *filename, int picture_type, const char *description) {
   const char *error_message;
   char *picture_data;
-  picture_data = parse_picture_specification(spec, &error_message, &comments->seen_file_icons);
+  picture_data = parse_picture_specification(filename, picture_type, description, &error_message, &comments->seen_file_icons);
   if(picture_data==NULL){
     /* FIXME: return proper errors rather than printing a message. */
     fprintf(stderr,"Error parsing picture option: %s\n",error_message);

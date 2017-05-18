@@ -34,9 +34,8 @@ void extract_jpeg_params(const unsigned char *data, size_t data_length,
                          opus_uint32 *depth, opus_uint32 *colors,
                          int *has_palette);
 
-char *parse_picture_specification(const char *spec,
-                                  const char **error_message,
-                                  int *seen_file_icons);
+char *parse_picture_specification(const char *filename, int picture_type, const char *description,
+                                  const char **error_message, int *seen_file_icons);
 
 #define WRITE_U32_BE(buf, val) \
   do{ \

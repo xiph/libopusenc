@@ -235,124 +235,35 @@ void extract_jpeg_params(const unsigned char *data, size_t data_length,
    have already been added, to ensure only one is allowed.
   Return: A Base64-encoded string suitable for use in a METADATA_BLOCK_PICTURE
    tag.*/
-char *parse_picture_specification(const char *spec,
-                                  const char **error_message,
-                                  int *seen_file_icons){
+char *parse_picture_specification(const char *filename, int picture_type, const char *description,
+                                  const char **error_message, int *seen_file_icons){
   FILE          *picture_file;
-  unsigned long  picture_type;
-  unsigned long  width;
-  unsigned long  height;
-  unsigned long  depth;
-  unsigned long  colors;
-  const char    *mime_type;
-  const char    *mime_type_end;
-  const char    *description;
-  const char    *description_end;
-  const char    *filename;
+  opus_uint32  width;
+  opus_uint32  height;
+  opus_uint32  depth;
+  opus_uint32  colors;
   unsigned char *buf;
+  const char    *mime_type;
   char          *out;
   size_t         cbuf;
   size_t         nbuf;
   size_t         data_offset;
   size_t         data_length;
   size_t         b64_length;
-  int            is_url;
   /*If a filename has a '|' in it, there's no way we can distinguish it from a
      full specification just from the spec string.
     Instead, try to open the file.
     If it exists, the user probably meant the file.*/
-  picture_type=3;
-  width=height=depth=colors=0;
-  mime_type=mime_type_end=description=description_end=filename=spec;
-  is_url=0;
+  if (picture_type < 0) picture_type=3;
+  if (description == NULL) description = "";
   picture_file=fopen(filename,"rb");
-  if(picture_file==NULL&&strchr(spec,'|')){
-    const char *p;
-    char       *q;
-    /*We don't have a plain file, and there is a pipe character: assume it's
-       the full form of the specification.*/
-    picture_type=strtoul(spec,&q,10);
-    if(*q!='|'||picture_type>20){
-      *error_message="invalid picture type";
-      return NULL;
-    }
-    if(picture_type>=1&&picture_type<=2&&(*seen_file_icons&picture_type)){
-      *error_message=picture_type==1?
-       "only one picture of type 1 (32x32 icon) allowed":
-       "only one picture of type 2 (icon) allowed";
-      return NULL;
-    }
-    /*An empty field implies a default of 'Cover (front)'.*/
-    if(spec==q)picture_type=3;
-    mime_type=q+1;
-    mime_type_end=mime_type+strcspn(mime_type,"|");
-    if(*mime_type_end!='|'){
-      *error_message="invalid picture specification: not enough fields";
-      return NULL;
-    }
-    /*The media type must be composed of ASCII printable characters 0x20-0x7E.*/
-    for(p=mime_type;p<mime_type_end;p++)if(*p<0x20||*p>0x7E){
-      *error_message="invalid characters in media type";
-      return NULL;
-    }
-    is_url=mime_type_end-mime_type==3
-     &&strncmp("-->",mime_type,mime_type_end-mime_type)==0;
-    description=mime_type_end+1;
-    description_end=description+strcspn(description,"|");
-    if(*description_end!='|'){
-      *error_message="invalid picture specification: not enough fields";
-      return NULL;
-    }
-    p=description_end+1;
-    if(*p!='|'){
-      width=strtoul(p,&q,10);
-      if(*q!='x'){
-        *error_message=
-         "invalid picture specification: can't parse resolution/color field";
-        return NULL;
-      }
-      p=q+1;
-      height=strtoul(p,&q,10);
-      if(*q!='x'){
-        *error_message=
-         "invalid picture specification: can't parse resolution/color field";
-        return NULL;
-      }
-      p=q+1;
-      depth=strtoul(p,&q,10);
-      if(*q=='/'){
-        p=q+1;
-        colors=strtoul(p,&q,10);
-      }
-      if(*q!='|'){
-        *error_message=
-         "invalid picture specification: can't parse resolution/color field";
-        return NULL;
-      }
-      p=q;
-    }
-    filename=p+1;
-    if(!is_url)picture_file=fopen(filename,"rb");
-  }
   /*Buffer size: 8 static 4-byte fields plus 2 dynamic fields, plus the
      file/URL data.
     We reserve at least 10 bytes for the media type, in case we still need to
      extract it from the file.*/
-  data_offset=32+(description_end-description)+IMAX(mime_type_end-mime_type,10);
+  data_offset=32+strlen(description)+10;
   buf=NULL;
-  if(is_url){
-    /*Easy case: just stick the URL at the end.
-      We don't do anything to verify it's a valid URL.*/
-    data_length=strlen(filename);
-    cbuf=nbuf=data_offset+data_length;
-    buf=(unsigned char *)malloc(cbuf);
-    memcpy(buf+data_offset,filename,data_length);
-  }
-  else{
-    opus_uint32 file_width;
-    opus_uint32 file_height;
-    opus_uint32 file_depth;
-    opus_uint32 file_colors;
+  {
     int          has_palette;
     /*Complicated case: we have a real file.
       Read it in, attempt to parse the media type and image dimensions if
@@ -398,19 +309,24 @@ char *parse_picture_specification(const char *spec,
       else cbuf=cbuf<<1|1;
     }
     data_length=nbuf-data_offset;
-    /*If there was no media type, try to extract it from the file data.*/
-    if(mime_type_end==mime_type){
+    /*Try to extract the image dimensions/color information from the file.*/
+    width=height=depth=colors=0;
+    has_palette=-1;
+    {
       if(is_jpeg(buf+data_offset,data_length)){
         mime_type="image/jpeg";
-        mime_type_end=mime_type+10;
+        extract_jpeg_params(buf+data_offset,data_length,
+         &width,&height,&depth,&colors,&has_palette);
       }
       else if(is_png(buf+data_offset,data_length)){
         mime_type="image/png";
-        mime_type_end=mime_type+9;
+        extract_png_params(buf+data_offset,data_length,
+         &width,&height,&depth,&colors,&has_palette);
       }
       else if(is_gif(buf+data_offset,data_length)){
         mime_type="image/gif";
-        mime_type_end=mime_type+9;
+        extract_gif_params(buf+data_offset,data_length,
+         &width,&height,&depth,&colors,&has_palette);
       }
       else{
         free(buf);
@@ -419,47 +335,14 @@ char *parse_picture_specification(const char *spec,
         return NULL;
       }
     }
-    /*Try to extract the image dimensions/color information from the file.*/
-    file_width=file_height=file_depth=file_colors=0;
-    has_palette=-1;
-    if(mime_type_end-mime_type==9
-     &&oi_strncasecmp("image/png",mime_type,mime_type_end-mime_type)==0){
-      extract_png_params(buf+data_offset,data_length,
-       &file_width,&file_height,&file_depth,&file_colors,&has_palette);
-    }
-    else if(mime_type_end-mime_type==9
-     &&oi_strncasecmp("image/gif",mime_type,mime_type_end-mime_type)==0){
-      extract_gif_params(buf+data_offset,data_length,
-       &file_width,&file_height,&file_depth,&file_colors,&has_palette);
-    }
-    else if(mime_type_end-mime_type==10
-     &&oi_strncasecmp("image/jpeg",mime_type,mime_type_end-mime_type)==0){
-      extract_jpeg_params(buf+data_offset,data_length,
-       &file_width,&file_height,&file_depth,&file_colors,&has_palette);
-    }
-    if(!width)width=file_width;
-    if(!height)height=file_height;
-    if(!depth)depth=file_depth;
-    if(!colors)colors=file_colors;
-    if((file_width&&width!=file_width)
-     ||(file_height&&height!=file_height)
-     ||(file_depth&&depth!=file_depth)
-     /*We use has_palette to ensure we also reject non-0 user color counts for
-        images we've positively identified as non-paletted.*/
-     ||(has_palette>=0&&colors!=file_colors)){
-      free(buf);
-      *error_message="invalid picture specification: "
-       "resolution/color field does not match file";
-      return NULL;
-    }
   }
   /*These fields MUST be set correctly OR all set to zero.
     So if any of them (except colors, for which 0 is a valid value) are still
      zero, clear the rest to zero.*/
   if(width==0||height==0||depth==0)width=height=depth=colors=0;
   if(picture_type==1&&(width!=32||height!=32
-   ||mime_type_end-mime_type!=9
-   ||oi_strncasecmp("image/png",mime_type,mime_type_end-mime_type)!=0)){
+   ||strlen(mime_type)!=9
+   ||oi_strncasecmp("image/png",mime_type,9)!=0)){
     free(buf);
     *error_message="pictures of type 1 MUST be 32x32 PNGs";
     return NULL;
@@ -477,14 +360,14 @@ char *parse_picture_specification(const char *spec,
   WRITE_U32_BE(buf+data_offset,height);
   data_offset-=4;
   WRITE_U32_BE(buf+data_offset,width);
-  data_offset-=description_end-description;
-  memcpy(buf+data_offset,description,description_end-description);
+  data_offset-=strlen(description);
+  memcpy(buf+data_offset,description,strlen(description));
   data_offset-=4;
-  WRITE_U32_BE(buf+data_offset,(unsigned long)(description_end-description));
-  data_offset-=mime_type_end-mime_type;
-  memcpy(buf+data_offset,mime_type,mime_type_end-mime_type);
+  WRITE_U32_BE(buf+data_offset,strlen(description));
+  data_offset-=strlen(mime_type);
+  memcpy(buf+data_offset,mime_type,strlen(mime_type));
   data_offset-=4;
-  WRITE_U32_BE(buf+data_offset,(unsigned long)(mime_type_end-mime_type));
+  WRITE_U32_BE(buf+data_offset,strlen(mime_type));
   data_offset-=4;
   WRITE_U32_BE(buf+data_offset,picture_type);
   data_length=nbuf-data_offset;

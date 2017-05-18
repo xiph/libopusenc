@@ -195,7 +195,7 @@ OPE_EXPORT void ope_comments_destroy(OggOpusComments *comments);
 /** Add a comment. 
     \param[in,out] comments Where to add the comments
     \param         tag      Tag for the comment (must not contain = char)
-    \param         val    Value for the tag
+    \param         val      Value for the tag
     \return Error code
  */
 OPE_EXPORT int ope_comments_add(OggOpusComments *comments, const char *tag, const char *val);
@@ -208,11 +208,13 @@ OPE_EXPORT int ope_comments_add(OggOpusComments *comments, const char *tag, cons
 OPE_EXPORT int ope_comments_add_string(OggOpusComments *comments, const char *tag_and_val);
 
 /** Add a picture. 
-    \param[in,out] comments    Where to add the comments
-    \param         spec        Spec string for the picture
+    \param[in,out] comments     Where to add the comments
+    \param         filename     File name for the picture
+    \param         picture_type Type of picture (-1 for default)
+    \param         description  Description (NULL means no comment)
     \return Error code
  */
-OPE_EXPORT int ope_comments_add_picture(OggOpusComments *comments, const char *spec);
+OPE_EXPORT int ope_comments_add_picture(OggOpusComments *comments, const char *filename, int picture_type, const char *description);
 
 /*@}*/
 /*@}*/

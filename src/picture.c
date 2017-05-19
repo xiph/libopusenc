@@ -376,6 +376,8 @@ char *parse_picture_specification(const char *filename, int picture_type, const 
   if(out!=NULL){
     base64_encode(out,(char *)buf+data_offset,data_length);
     if(picture_type>=1&&picture_type<=2)*seen_file_icons|=picture_type;
+  } else {
+    *error = OPE_ALLOC_FAIL;
   }
   free(buf);
   return out;

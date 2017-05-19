@@ -813,7 +813,9 @@ const char *ope_strerror(int error) {
     "invalid picture file",
     "invalid icon file (pictures of type 1 MUST be 32x32 PNGs)"
   };
-  if (error > -30) return opus_strerror(error+10);
+  if (error == 0) return "success";
+  else if (error >= -10) return "unknown error";
+  else if (error > -30) return opus_strerror(error+10);
   else if (error >= OPE_INVALID_ICON) return ope_error_strings[-error-30];
   else return "unknown error";
 }

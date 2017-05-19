@@ -437,8 +437,8 @@ static void encode_buffer(OggOpusEnc *enc) {
       if (e_o_s) granulepos=end_granule48k-enc->streams->granule_offset;
       p = oggp_get_packet_buffer(enc->oggp, MAX_PACKET_SIZE);
       memcpy(p, packet, nbBytes);
-      oggp_commit_packet(enc->oggp, nbBytes, granulepos, e_o_s);
       if (enc->packet_callback) enc->packet_callback(enc->packet_callback_data, packet, nbBytes, 0);
+      oggp_commit_packet(enc->oggp, nbBytes, granulepos, e_o_s);
       if (e_o_s) oe_flush_page(enc);
       else if (!enc->pull_api) output_pages(enc);
       if (e_o_s) {
@@ -461,8 +461,8 @@ static void encode_buffer(OggOpusEnc *enc) {
           opus_int64 granulepos2=enc->curr_granule - enc->streams->granule_offset - enc->frame_size;
           p = oggp_get_packet_buffer(enc->oggp, MAX_PACKET_SIZE);
           memcpy(p, enc->chaining_keyframe, enc->chaining_keyframe_length);
-          oggp_commit_packet(enc->oggp, enc->chaining_keyframe_length, granulepos2, 0);
           if (enc->packet_callback) enc->packet_callback(enc->packet_callback_data, enc->chaining_keyframe, enc->chaining_keyframe_length, 0);
+          oggp_commit_packet(enc->oggp, enc->chaining_keyframe_length, granulepos2, 0);
         }
         end_granule48k = (enc->streams->end_granule*48000 + enc->rate - 1)/enc->rate + enc->global_granule_offset;
         cont = 1;

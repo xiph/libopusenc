@@ -73,34 +73,6 @@ AS_IF([test "$enable_assertions" = "yes"], [
   AC_DEFINE([OP_ENABLE_ASSERTIONS], [1], [Enable assertions in code])
 ])
 
-AC_ARG_ENABLE([http],
-  AS_HELP_STRING([--disable-http], [Disable HTTP support]),,
-  enable_http=yes)
-
-AM_COND_IF(OP_WIN32,
-  AS_IF([test "$enable_http" != "no"],
-    AC_CHECK_HEADER([winsock2.h],,
-      AC_MSG_WARN([HTTP support requires a Winsock socket library.])
-      enable_http=no
-    )
-  ),
-  AS_IF([test "$enable_http" != "no"],
-    AC_CHECK_HEADER([sys/socket.h],,
-      AC_MSG_WARN([HTTP support requires a POSIX socket library.])
-      enable_http=no
-    )
-  )
-)
-AC_SEARCH_LIBS(ftime, [compat], , [enable_http=no])
-
-AS_IF([test "$enable_http" != "no"], [
-   openssl="openssl"
-   AC_DEFINE([OP_ENABLE_HTTP], [1], [Enable HTTP support])
-   PKG_CHECK_MODULES([URL_DEPS], [openssl])
-])
-AM_CONDITIONAL(OP_ENABLE_HTTP, [test "$enable_http" != "no"])
-AC_SUBST([openssl])
-
 PKG_CHECK_MODULES([DEPS], [opus >= 1.1])
 
 AC_ARG_ENABLE([fixed-point],
@@ -177,7 +149,6 @@ AC_MSG_NOTICE([
 
     Assertions ................... ${enable_assertions}
 
-    HTTP support ................. ${enable_http}
     Fixed-point .................. ${enable_fixed_point}
     Floating-point API ........... ${enable_float}${lrintf_notice}
 

@@ -1,0 +1,13 @@
+language: c
+
+dist: trusty
+addons:
+  apt:
+    packages:
+      - libopus-dev
+
+script:
+  - ./autogen.sh
+  - ./configure
+  - make
+  - make distcheck

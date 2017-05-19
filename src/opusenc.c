@@ -373,9 +373,10 @@ static void init_stream(OggOpusEnc *enc) {
 
   /*Write header*/
   {
+    int packet_size;
     unsigned char *p;
     p = oggp_get_packet_buffer(enc->oggp, 276);
-    int packet_size = opus_header_to_packet(&enc->header, p, 276);
+    packet_size = opus_header_to_packet(&enc->header, p, 276);
     if (enc->packet_callback) enc->packet_callback(enc->packet_callback_data, p, packet_size, 0);
     oggp_commit_packet(enc->oggp, packet_size, 0, 0);
     oe_flush_page(enc);
@@ -652,8 +653,8 @@ int ope_encoder_continue_new_file(OggOpusEnc *enc, const char *path, OggOpusComm
 
 /* Ends the stream and create a new file (callback-based). */
 int ope_encoder_continue_new_callbacks(OggOpusEnc *enc, void *user_data, OggOpusComments *comments) {
-  if (enc->unrecoverable) return OPE_UNRECOVERABLE;
   EncStream *new_stream;
+  if (enc->unrecoverable) return OPE_UNRECOVERABLE;
   assert(enc->streams);
   assert(enc->last_stream);
   new_stream = stream_create(comments);

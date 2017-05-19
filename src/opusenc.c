@@ -712,6 +712,28 @@ int ope_encoder_ctl(OggOpusEnc *enc, int request, ...) {
       }
     }
     break;
+    case OPUS_GET_APPLICATION_REQUEST:
+    case OPUS_GET_BITRATE_REQUEST:
+    case OPUS_GET_MAX_BANDWIDTH_REQUEST:
+    case OPUS_GET_VBR_REQUEST:
+    case OPUS_GET_BANDWIDTH_REQUEST:
+    case OPUS_GET_COMPLEXITY_REQUEST:
+    case OPUS_GET_INBAND_FEC_REQUEST:
+    case OPUS_GET_PACKET_LOSS_PERC_REQUEST:
+    case OPUS_GET_DTX_REQUEST:
+    case OPUS_GET_VBR_CONSTRAINT_REQUEST:
+    case OPUS_GET_FORCE_CHANNELS_REQUEST:
+    case OPUS_GET_SIGNAL_REQUEST:
+    case OPUS_GET_LSB_DEPTH_REQUEST:
+    case OPUS_GET_PREDICTION_DISABLED_REQUEST:
+#ifdef OPUS_GET_PHASE_INVERSION_DISABLED_REQUEST
+    case OPUS_GET_PHASE_INVERSION_DISABLED_REQUEST:
+#endif
+    {
+      opus_int32 *value = va_arg(ap, opus_int32*);
+      ret = opus_multistream_encoder_ctl(enc->st, request, value);
+    }
+    break;
     case OPUS_MULTISTREAM_GET_ENCODER_STATE_REQUEST:
     {
       opus_int32 stream_id;

@@ -805,6 +805,19 @@ int ope_encoder_ctl(OggOpusEnc *enc, int request, ...) {
   return ret;
 }
 
+const char *ope_strerror(int error) {
+  static const char * const ope_error_strings[5] = {
+    "cannot open file",
+    "call cannot be made at this point",
+    "unrecoverable error",
+    "invalid picture file",
+    "invalid icon file (pictures of type 1 MUST be 32x32 PNGs)"
+  };
+  if (error > -30) return opus_strerror(error+10);
+  else if (error >= OPE_INVALID_ICON) return ope_error_strings[-error-30];
+  else return "unknown error";
+}
+
 const char *ope_get_version_string(void)
 {
   return "libopusenc " PACKAGE_VERSION;

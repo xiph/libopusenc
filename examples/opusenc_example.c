@@ -12,7 +12,7 @@ int main(int argc, char **argv) {
     fprintf(stderr, "usage: %s <raw pcm input> <Ogg Opus output>\n", argv[0]);
     return 1;
   }
-  fin = fopen(argv[1], "r");
+  fin = fopen(argv[1], "rb");
   if (!fin) {
     fprintf(stderr, "cannot open input file: %s\n", argv[1]);
     return 1;

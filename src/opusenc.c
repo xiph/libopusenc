@@ -62,8 +62,6 @@
 #define MIN(a,b) ((a) < (b) ? (a) : (b))
 #define MAX(a,b) ((a) > (b) ? (a) : (b))
 
-#define MAX_PACKET_SIZE (1276*8)
-
 struct StdioObject {
   FILE *file;
 };
@@ -401,14 +399,17 @@ static void shift_buffer(OggOpusEnc *enc) {
 }
 
 static void encode_buffer(OggOpusEnc *enc) {
+  int max_packet_size;
   /* Round up when converting the granule pos because the decoder will round down. */
   opus_int64 end_granule48k = (enc->streams->end_granule*48000 + enc->rate - 1)/enc->rate + enc->global_granule_offset;
+  max_packet_size = 1277*6*enc->header.nb_streams;
   while (enc->buffer_end-enc->buffer_start > enc->frame_size + enc->decision_delay) {
     int cont;
     int e_o_s;
     opus_int32 pred;
     int nbBytes;
-    unsigned char packet[MAX_PACKET_SIZE];
+    unsigned char *packet;
+    unsigned char *packet_copy = NULL;
     int is_keyframe=0;
     if (enc->unrecoverable) return;
     opus_multistream_encoder_ctl(enc->st, OPUS_GET_PREDICTION_DISABLED(&pred));
@@ -418,8 +419,9 @@ static void encode_buffer(OggOpusEnc *enc) {
       opus_multistream_encoder_ctl(enc->st, OPUS_SET_PREDICTION_DISABLED(1));
       is_keyframe = 1;
     }
+    packet = oggp_get_packet_buffer(enc->oggp, max_packet_size);
     nbBytes = opus_multistream_encode_float(enc->st, &enc->buffer[enc->channels*enc->buffer_start],
-        enc->buffer_end-enc->buffer_start, packet, MAX_PACKET_SIZE);
+        enc->buffer_end-enc->buffer_start, packet, max_packet_size);
     if (nbBytes < 0) {
       /* Anything better we can do here? */
       enc->unrecoverable = 1;
@@ -429,15 +431,20 @@ static void encode_buffer(OggOpusEnc *enc) {
     assert(nbBytes > 0);
     enc->curr_granule += enc->frame_size;
     do {
-      unsigned char *p;
       opus_int64 granulepos;
       granulepos=enc->curr_granule-enc->streams->granule_offset;
       e_o_s=enc->curr_granule >= end_granule48k;
       cont = 0;
       if (e_o_s) granulepos=end_granule48k-enc->streams->granule_offset;
-      p = oggp_get_packet_buffer(enc->oggp, MAX_PACKET_SIZE);
-      memcpy(p, packet, nbBytes);
+      if (packet_copy != NULL) {
+        packet = oggp_get_packet_buffer(enc->oggp, max_packet_size);
+        memcpy(packet, packet_copy, nbBytes);
+      }
       if (enc->packet_callback) enc->packet_callback(enc->packet_callback_data, packet, nbBytes, 0);
+      if (e_o_s && packet_copy == NULL) {
+        packet_copy = malloc(nbBytes);
+        memcpy(packet_copy, packet, nbBytes);
+      }
       oggp_commit_packet(enc->oggp, nbBytes, granulepos, e_o_s);
       if (e_o_s) oe_flush_page(enc);
       else if (!enc->pull_api) output_pages(enc);
@@ -448,7 +455,10 @@ static void encode_buffer(OggOpusEnc *enc) {
         stream_destroy(enc->streams);
         enc->streams = tmp;
         if (!tmp) enc->last_stream = NULL;
-        if (enc->last_stream == NULL) return;
+        if (enc->last_stream == NULL) {
+          if (packet_copy) free(packet_copy);
+          return;
+        }
         /* We're done with this stream, start the next one. */
         enc->header.preskip = end_granule48k + enc->frame_size - enc->curr_granule;
         enc->streams->granule_offset = enc->curr_granule - enc->frame_size;
@@ -458,8 +468,9 @@ static void encode_buffer(OggOpusEnc *enc) {
         }
         init_stream(enc);
         if (enc->chaining_keyframe) {
+          unsigned char *p;
           opus_int64 granulepos2=enc->curr_granule - enc->streams->granule_offset - enc->frame_size;
-          p = oggp_get_packet_buffer(enc->oggp, MAX_PACKET_SIZE);
+          p = oggp_get_packet_buffer(enc->oggp, enc->chaining_keyframe_length);
           memcpy(p, enc->chaining_keyframe, enc->chaining_keyframe_length);
           if (enc->packet_callback) enc->packet_callback(enc->packet_callback_data, enc->chaining_keyframe, enc->chaining_keyframe_length, 0);
           oggp_commit_packet(enc->oggp, enc->chaining_keyframe_length, granulepos2, 0);
@@ -470,13 +481,19 @@ static void encode_buffer(OggOpusEnc *enc) {
     } while (cont);
     if (enc->chaining_keyframe) free(enc->chaining_keyframe);
     if (is_keyframe) {
-      enc->chaining_keyframe = malloc(nbBytes);
       enc->chaining_keyframe_length = nbBytes;
-      memcpy(enc->chaining_keyframe, packet, nbBytes);
+      if (packet_copy) {
+        enc->chaining_keyframe = packet_copy;
+        packet_copy = NULL;
+      } else {
+        enc->chaining_keyframe = malloc(nbBytes);
+        memcpy(enc->chaining_keyframe, packet, nbBytes);
+      }
     } else {
       enc->chaining_keyframe = NULL;
       enc->chaining_keyframe_length = -1;
     }
+    if (packet_copy) free(packet_copy);
     enc->buffer_start += enc->frame_size;
   }
   /* If we've reached the end of the buffer, move everything back to the front. */

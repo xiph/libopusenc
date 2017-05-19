@@ -1,5 +1,6 @@
 language: c
 
+dist: trusty
 addons:
   apt:
     packages:

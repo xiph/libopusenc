@@ -376,13 +376,13 @@ static void init_stream(OggOpusEnc *enc) {
     unsigned char *p;
     p = oggp_get_packet_buffer(enc->oggp, 276);
     int packet_size = opus_header_to_packet(&enc->header, p, 276);
-    oggp_commit_packet(enc->oggp, packet_size, 0, 0);
     if (enc->packet_callback) enc->packet_callback(enc->packet_callback_data, p, packet_size, 0);
+    oggp_commit_packet(enc->oggp, packet_size, 0, 0);
     oe_flush_page(enc);
     p = oggp_get_packet_buffer(enc->oggp, enc->streams->comment_length);
     memcpy(p, enc->streams->comment, enc->streams->comment_length);
-    oggp_commit_packet(enc->oggp, enc->streams->comment_length, 0, 0);
     if (enc->packet_callback) enc->packet_callback(enc->packet_callback_data, p, enc->streams->comment_length, 0);
+    oggp_commit_packet(enc->oggp, enc->streams->comment_length, 0, 0);
     oe_flush_page(enc);
   }
   enc->streams->stream_is_init = 1;
@@ -399,10 +399,10 @@ static void shift_buffer(OggOpusEnc *enc) {
 }
 
 static void encode_buffer(OggOpusEnc *enc) {
-  int max_packet_size;
+  opus_int32 max_packet_size;
   /* Round up when converting the granule pos because the decoder will round down. */
   opus_int64 end_granule48k = (enc->streams->end_granule*48000 + enc->rate - 1)/enc->rate + enc->global_granule_offset;
-  max_packet_size = 1277*6*enc->header.nb_streams;
+  max_packet_size = (1277*6+2)*enc->header.nb_streams;
   while (enc->buffer_end-enc->buffer_start > enc->frame_size + enc->decision_delay) {
     int cont;
     int e_o_s;
@@ -441,8 +441,13 @@ static void encode_buffer(OggOpusEnc *enc) {
         memcpy(packet, packet_copy, nbBytes);
       }
       if (enc->packet_callback) enc->packet_callback(enc->packet_callback_data, packet, nbBytes, 0);
-      if (e_o_s && packet_copy == NULL) {
+      if ((e_o_s || is_keyframe) && packet_copy == NULL) {
         packet_copy = malloc(nbBytes);
+        if (packet_copy == NULL) {
+          /* Can't recover from allocation failing here. */
+          enc->unrecoverable = 1;
+          return;
+        }
         memcpy(packet_copy, packet, nbBytes);
       }
       oggp_commit_packet(enc->oggp, nbBytes, granulepos, e_o_s);
@@ -482,13 +487,8 @@ static void encode_buffer(OggOpusEnc *enc) {
     if (enc->chaining_keyframe) free(enc->chaining_keyframe);
     if (is_keyframe) {
       enc->chaining_keyframe_length = nbBytes;
-      if (packet_copy) {
-        enc->chaining_keyframe = packet_copy;
-        packet_copy = NULL;
-      } else {
-        enc->chaining_keyframe = malloc(nbBytes);
-        memcpy(enc->chaining_keyframe, packet, nbBytes);
-      }
+      enc->chaining_keyframe = packet_copy;
+      packet_copy = NULL;
     } else {
       enc->chaining_keyframe = NULL;
       enc->chaining_keyframe_length = -1;

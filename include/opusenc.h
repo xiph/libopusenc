@@ -112,7 +112,7 @@ extern "C" {
 #define OPE_SET_SERIALNO_REQUEST            14006
 #define OPE_GET_SERIALNO_REQUEST            14007
 #define OPE_SET_PACKET_CALLBACK_REQUEST     14008
-#define OPE_GET_PACKET_CALLBACK_REQUEST     14009
+/*#define OPE_GET_PACKET_CALLBACK_REQUEST     14009*/
 #define OPE_SET_HEADER_GAIN_REQUEST         14010
 #define OPE_GET_HEADER_GAIN_REQUEST         14011
 
@@ -134,7 +134,7 @@ extern "C" {
 #define OPE_GET_SERIALNO(x) OPE_GET_SERIALNO_REQUEST, __opus_check_int_ptr(x)
 /* FIXME: Add type-checking macros to these. */
 #define OPE_SET_PACKET_CALLBACK(x,u) OPE_SET_PACKET_CALLBACK_REQUEST, (x), (u)
-#define OPE_GET_PACKET_CALLBACK(x,u) OPE_GET_PACKET_CALLBACK_REQUEST, (x), (u)
+/*#define OPE_GET_PACKET_CALLBACK(x,u) OPE_GET_PACKET_CALLBACK_REQUEST, (x), (u)*/
 #define OPE_SET_HEADER_GAIN(x,u) OPE_SET_HEADER_GAIN_REQUEST, __opus_check_int(x)
 #define OPE_GET_HEADER_GAIN(x,u) OPE_GET_HEADER_GAIN_REQUEST, __opus_check_int_ptr(x)
 /*@}*/

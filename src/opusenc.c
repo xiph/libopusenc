@@ -663,6 +663,7 @@ int ope_encoder_ctl(OggOpusEnc *enc, int request, ...) {
   va_list ap;
   if (enc->unrecoverable) return OPE_UNRECOVERABLE;
   va_start(ap, request);
+  ret = OPE_OK;
   switch (request) {
     case OPUS_SET_APPLICATION_REQUEST:
     case OPUS_SET_BITRATE_REQUEST:
@@ -753,7 +754,12 @@ int ope_encoder_ctl(OggOpusEnc *enc, int request, ...) {
         break;
       }
       enc->decision_delay = value;
-      ret = OPE_OK;
+    }
+    break;
+    case OPE_GET_DECISION_DELAY_REQUEST:
+    {
+      opus_int32 *value = va_arg(ap, opus_int32*);
+      *value = enc->decision_delay;
     }
     break;
     case OPE_SET_MUXING_DELAY_REQUEST:
@@ -765,7 +771,12 @@ int ope_encoder_ctl(OggOpusEnc *enc, int request, ...) {
       }
       enc->max_ogg_delay = value;
       oggp_set_muxing_delay(enc->oggp, enc->max_ogg_delay);
-      ret = OPE_OK;
+    }
+    break;
+    case OPE_GET_MUXING_DELAY_REQUEST:
+    {
+      opus_int32 *value = va_arg(ap, opus_int32*);
+      *value = enc->max_ogg_delay;
     }
     break;
     case OPE_SET_COMMENT_PADDING_REQUEST:
@@ -779,6 +790,12 @@ int ope_encoder_ctl(OggOpusEnc *enc, int request, ...) {
       ret = OPE_OK;
     }
     break;
+    case OPE_GET_COMMENT_PADDING_REQUEST:
+    {
+      opus_int32 *value = va_arg(ap, opus_int32*);
+      *value = enc->comment_padding;
+    }
+    break;
     case OPE_SET_SERIALNO_REQUEST:
     {
       opus_int32 value = va_arg(ap, opus_int32);
@@ -789,6 +806,12 @@ int ope_encoder_ctl(OggOpusEnc *enc, int request, ...) {
       enc->last_stream->serialno = value;
       enc->last_stream->serialno_is_set = 1;
       ret = OPE_OK;
+    }
+    break;
+    case OPE_GET_SERIALNO_REQUEST:
+    {
+      opus_int32 *value = va_arg(ap, opus_int32*);
+      *value = enc->last_stream->serialno;
     }
     break;
     case OPE_SET_PACKET_CALLBACK_REQUEST:
@@ -809,6 +832,12 @@ int ope_encoder_ctl(OggOpusEnc *enc, int request, ...) {
       }
       enc->header.gain = value;
       ret = OPE_OK;
+    }
+    break;
+    case OPE_GET_HEADER_GAIN_REQUEST:
+    {
+      opus_int32 *value = va_arg(ap, opus_int32*);
+      *value = enc->header.gain;
     }
     break;
     default:

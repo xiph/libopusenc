@@ -2,6 +2,7 @@
 #define __PICTURE_H
 
 #include <opus.h>
+#include "opusenc.h"
 
 typedef enum{
   PIC_FORMAT_JPEG,
@@ -35,7 +36,7 @@ void extract_jpeg_params(const unsigned char *data, size_t data_length,
                          int *has_palette);
 
 char *parse_picture_specification(const char *filename, int picture_type, const char *description,
-                                  const char **error_message, int *seen_file_icons);
+                                  int *error, int *seen_file_icons);
 
 #define WRITE_U32_BE(buf, val) \
   do{ \

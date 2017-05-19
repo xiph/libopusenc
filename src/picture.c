@@ -236,7 +236,7 @@ void extract_jpeg_params(const unsigned char *data, size_t data_length,
   Return: A Base64-encoded string suitable for use in a METADATA_BLOCK_PICTURE
    tag.*/
 char *parse_picture_specification(const char *filename, int picture_type, const char *description,
-                                  const char **error_message, int *seen_file_icons){
+                                  int *error, int *seen_file_icons){
   FILE          *picture_file;
   opus_uint32  width;
   opus_uint32  height;
@@ -250,6 +250,7 @@ char *parse_picture_specification(const char *filename, int picture_type, const 
   size_t         data_offset;
   size_t         data_length;
   size_t         b64_length;
+  *error = OPE_OK;
   /*If a filename has a '|' in it, there's no way we can distinguish it from a
      full specification just from the spec string.
     Instead, try to open the file.
@@ -269,7 +270,7 @@ char *parse_picture_specification(const char *filename, int picture_type, const 
       Read it in, attempt to parse the media type and image dimensions if
        necessary, and validate what the user passed in.*/
     if(picture_file==NULL){
-      *error_message="error opening picture file";
+      *error = OPE_CANNOT_OPEN;
       return NULL;
     }
     nbuf=data_offset;
@@ -282,19 +283,19 @@ char *parse_picture_specification(const char *filename, int picture_type, const 
       if(new_buf==NULL){
         fclose(picture_file);
         free(buf);
-        *error_message="insufficient memory";
+        *error = OPE_ALLOC_FAIL;
         return NULL;
       }
       buf=new_buf;
       nread=fread(buf+nbuf,1,cbuf-nbuf,picture_file);
       nbuf+=nread;
       if(nbuf<cbuf){
-        int error;
-        error=ferror(picture_file);
+        int file_error;
+        file_error=ferror(picture_file);
         fclose(picture_file);
-        if(error){
+        if(file_error){
           free(buf);
-          *error_message="error reading picture file";
+          *error = OPE_INVALID_PICTURE;
           return NULL;
         }
         break;
@@ -302,7 +303,7 @@ char *parse_picture_specification(const char *filename, int picture_type, const 
       if(cbuf==0xFFFFFFFF){
         fclose(picture_file);
         free(buf);
-        *error_message="file too large";
+        *error = OPE_INVALID_PICTURE;
         return NULL;
       }
       else if(cbuf>0x7FFFFFFFU)cbuf=0xFFFFFFFFU;
@@ -330,8 +331,7 @@ char *parse_picture_specification(const char *filename, int picture_type, const 
       }
       else{
         free(buf);
-        *error_message="unable to guess media type from file, "
-         "must set it explicitly";
+        *error = OPE_INVALID_PICTURE;
         return NULL;
       }
     }
@@ -344,7 +344,7 @@ char *parse_picture_specification(const char *filename, int picture_type, const 
    ||strlen(mime_type)!=9
    ||oi_strncasecmp("image/png",mime_type,9)!=0)){
     free(buf);
-    *error_message="pictures of type 1 MUST be 32x32 PNGs";
+    *error = OPE_INVALID_ICON;
     return NULL;
   }
   /*Build the METADATA_BLOCK_PICTURE buffer.

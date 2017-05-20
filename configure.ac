@@ -12,7 +12,7 @@ m4_define([CURRENT_VERSION],
                            printf "unknown"
                        fi ]))
 
-AC_INIT([opusenc],[CURRENT_VERSION],[opus@xiph.org])
+AC_INIT([libopusenc],[CURRENT_VERSION],[opus@xiph.org])
 AC_CONFIG_SRCDIR([src/opusenc.c])
 AC_CONFIG_MACRO_DIR([m4])
 

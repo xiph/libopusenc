@@ -36,14 +36,14 @@ examples_opusenc_example_SOURCES = examples/opusenc_example.c
 examples_opusenc_example_LDADD = libopusenc.la
 
 pkgconfigdir = $(libdir)/pkgconfig
-pkgconfig_DATA = opusenc.pc
+pkgconfig_DATA = libopusenc.pc
 
 debug:
 	$(MAKE) CFLAGS="${CFLAGS} -O0 -ggdb -DOP_ENABLE_ASSERTIONS" all
 
 EXTRA_DIST = \
- opusenc.pc.in \
- opusenc-uninstalled.pc.in \
+ libopusenc.pc.in \
+ libopusenc-uninstalled.pc.in \
  doc/Doxyfile.in \
  doc/opus_logo.svg \
  doc/Makefile

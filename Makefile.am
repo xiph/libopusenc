@@ -49,10 +49,10 @@ EXTRA_DIST = \
  doc/Makefile
 
 # Targets to build and install just the library without the docs
-opusenc install-opusenc: NO_DOXYGEN = 1
+libopusenc install-libopusenc: NO_DOXYGEN = 1
 
-opusenc: all
-install-opusenc: install
+libopusenc: all
+install-libopusenc: install
 
 # Or just the docs
 docs: doc/doxygen-build.stamp

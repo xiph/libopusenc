@@ -28,7 +28,7 @@ LT_INIT
 
 m4_ifdef([AM_SILENT_RULES], [AM_SILENT_RULES([yes])])
 
-AC_DEFINE([OPE_BUILD], [], [This is a build of opusenc])
+AC_DEFINE([OPE_BUILD], [], [This is a build of libopusenc])
 
 dnl Library versioning for libtool.
 dnl Please update these for releases.
@@ -136,8 +136,8 @@ AM_CONDITIONAL([HAVE_DOXYGEN], [test "$HAVE_DOXYGEN" = "yes"])
 
 AC_CONFIG_FILES([
   Makefile
-  opusenc.pc
-  opusenc-uninstalled.pc
+  libopusenc.pc
+  libopusenc-uninstalled.pc
   doc/Doxyfile
 ])
 AC_CONFIG_HEADERS([config.h])

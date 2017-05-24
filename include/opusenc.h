@@ -333,7 +333,7 @@ OPE_EXPORT int ope_encoder_flush_header(OggOpusEnc *enc);
  */
 OPE_EXPORT int ope_encoder_ctl(OggOpusEnc *enc, int request, ...);
 
-/** Converts an opusenc error code into a human readable string.
+/** Converts a libopusenc error code into a human readable string.
   *
   * @param error Error number
   * @returns Error string

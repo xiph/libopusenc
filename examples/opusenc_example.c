@@ -20,7 +20,7 @@ int main(int argc, char **argv) {
   comments = ope_comments_create();
   ope_comments_add(comments, "ARTIST", "Someone");
   ope_comments_add(comments, "TITLE", "Some track");
-  enc = ope_encoder_create_file(argv[2], comments, 48000, 2, 0, &error);
+  enc = ope_encoder_create_file(argv[2], comments, 44100, 2, 0, &error);
   if (!enc) {
     fprintf(stderr, "cannout open output file: %s\n", argv[2]);
     fclose(fin);

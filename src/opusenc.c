@@ -816,6 +816,7 @@ int ope_encoder_ctl(OggOpusEnc *enc, int request, ...) {
         ret = OPE_BAD_ARG;
         break;
       }
+      value = MIN(value, MAX_LOOKAHEAD);
       enc->decision_delay = value;
     }
     break;

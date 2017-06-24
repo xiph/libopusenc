@@ -28,7 +28,7 @@ distclean: clean
 
 # run autoconf-like replacements to finalize our config
 Doxyfile: Doxyfile.in Makefile ../package_version
-	sed -e 's/@PACKAGE_NAME@/opusenc/' \
+	sed -e 's/@PACKAGE_NAME@/libopusenc/' \
 	    -e 's/@PACKAGE_VERSION@/$(PACKAGE_VERSION)/' \
 	    -e 's/@top_srcdir@/../' \
 	  < $< > $@

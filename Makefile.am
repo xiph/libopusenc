@@ -125,4 +125,4 @@ dist-hook:
 	echo 'PACKAGE_VERSION="$(PACKAGE_VERSION)"' > $(top_distdir)/package_version
 
 
-.PHONY: opusenc install-opusenc docs install-docs
+.PHONY: libopusenc install-libopusenc docs install-docs

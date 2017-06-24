@@ -1,4 +1,4 @@
-# opusenc installed pkg-config file
+# libopusenc installed pkg-config file
 
 prefix=@prefix@
 exec_prefix=@exec_prefix@

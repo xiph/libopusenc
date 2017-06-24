@@ -1,4 +1,4 @@
-## GNU makefile for opusenc documentation.
+## GNU makefile for libopusenc documentation.
 
 -include ../package_version
 

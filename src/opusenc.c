@@ -834,7 +834,7 @@ int ope_encoder_ctl(OggOpusEnc *enc, int request, ...) {
         break;
       }
       enc->max_ogg_delay = value;
-      oggp_set_muxing_delay(enc->oggp, enc->max_ogg_delay);
+      if (enc->oggp) oggp_set_muxing_delay(enc->oggp, enc->max_ogg_delay);
     }
     break;
     case OPE_GET_MUXING_DELAY_REQUEST:

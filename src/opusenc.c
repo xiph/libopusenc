@@ -62,6 +62,10 @@
 #define MIN(a,b) ((a) < (b) ? (a) : (b))
 #define MAX(a,b) ((a) > (b) ? (a) : (b))
 
+#ifdef _MSC_VER
+# define snprintf _snprintf
+#endif
+
 struct StdioObject {
   FILE *file;
 };

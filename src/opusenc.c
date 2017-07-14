@@ -344,7 +344,10 @@ OggOpusEnc *ope_encoder_create_callbacks(const OpusEncCallbacks *callbacks, void
   }
   enc->buffer_start = enc->buffer_end = 0;
   enc->st = st;
-  enc->callbacks = *callbacks;
+  if (callbacks != NULL)
+  {
+    enc->callbacks = *callbacks;
+  }
   enc->streams->user_data = user_data;
   if (error) *error = OPE_OK;
   return enc;
@@ -473,7 +476,7 @@ static void encode_buffer(OggOpusEnc *enc) {
       if (e_o_s) {
         EncStream *tmp;
         tmp = enc->streams->next;
-        if (enc->streams->close_at_end) enc->callbacks.close(enc->streams->user_data);
+        if (enc->streams->close_at_end && !enc->pull_api) enc->callbacks.close(enc->streams->user_data);
         stream_destroy(enc->streams);
         enc->streams = tmp;
         if (!tmp) enc->last_stream = NULL;

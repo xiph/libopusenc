@@ -344,7 +344,9 @@ OggOpusEnc *ope_encoder_create_callbacks(const OpusEncCallbacks *callbacks, void
   }
   enc->buffer_start = enc->buffer_end = 0;
   enc->st = st;
-  enc->callbacks = *callbacks;
+  if (callbacks) {
+    enc->callbacks = *callbacks;
+  }
   enc->streams->user_data = user_data;
   if (error) *error = OPE_OK;
   return enc;
@@ -365,8 +367,11 @@ fail:
 /* Create a new OggOpus stream, pulling one page at a time. */
 OPE_EXPORT OggOpusEnc *ope_encoder_create_pull(OggOpusComments *comments, opus_int32 rate, int channels, int family, int *error) {
   OggOpusEnc *enc = ope_encoder_create_callbacks(NULL, NULL, comments, rate, channels, family, error);
-  enc->pull_api = 1;
-  return enc;
+  if (enc) {
+	  enc->pull_api = 1;
+	  return enc;
+  }
+  return NULL;
 }
 
 static void init_stream(OggOpusEnc *enc) {

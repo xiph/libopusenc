@@ -368,7 +368,7 @@ fail:
 /* Create a new OggOpus stream, pulling one page at a time. */
 OPE_EXPORT OggOpusEnc *ope_encoder_create_pull(OggOpusComments *comments, opus_int32 rate, int channels, int family, int *error) {
   OggOpusEnc *enc = ope_encoder_create_callbacks(NULL, NULL, comments, rate, channels, family, error);
-  enc->pull_api = 1;
+  if (enc) enc->pull_api = 1;
   return enc;
 }
 

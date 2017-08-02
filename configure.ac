@@ -73,6 +73,11 @@ AS_IF([test "$enable_assertions" = "yes"], [
   AC_DEFINE([OP_ENABLE_ASSERTIONS], [1], [Enable assertions in code])
 ])
 
+m4_ifndef([PKG_PROG_PKG_CONFIG],
+  [m4_fatal([Could not locate the pkg-config autoconf macros.
+Please make sure pkg-config is installed and, if necessary, set the environment
+variable ACLOCAL="aclocal -I/path/to/pkg.m4".])])
+
 PKG_CHECK_MODULES([DEPS], [opus >= 1.1])
 
 AC_ARG_ENABLE([fixed-point],

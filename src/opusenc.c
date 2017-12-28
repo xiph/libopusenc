@@ -86,7 +86,7 @@ OggOpusComments *ope_comments_create() {
   c = malloc(sizeof(*c));
   if (c == NULL) return NULL;
   libopus_str = opus_get_version_string();
-  snprintf(vendor_str, sizeof(vendor_str), "%s, %s version %s", libopus_str, PACKAGE_NAME, PACKAGE_VERSION);
+  snprintf(vendor_str, sizeof(vendor_str), "%s, %s %s", libopus_str, PACKAGE_NAME, PACKAGE_VERSION);
   comment_init(&c->comment, &c->comment_length, vendor_str);
   if (c->comment == NULL) {
     free(c);
@@ -129,7 +129,7 @@ int ope_comments_add(OggOpusComments *comments, const char *tag, const char *val
 /* Add a comment. */
 int ope_comments_add_string(OggOpusComments *comments, const char *tag_and_val) {
   if (!strchr(tag_and_val, '=')) return OPE_BAD_ARG;
-  if (comment_add(&comments->comment, &comments->comment_length, tag_and_val, NULL)) return OPE_ALLOC_FAIL;
+  if (comment_add(&comments->comment, &comments->comment_length, NULL, tag_and_val)) return OPE_ALLOC_FAIL;
   return OPE_OK;
 }
 

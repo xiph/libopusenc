@@ -323,14 +323,7 @@ OggOpusEnc *ope_encoder_create_callbacks(const OpusEncCallbacks *callbacks, void
     enc->re = NULL;
   }
   opus_multistream_encoder_ctl(st, OPUS_SET_EXPERT_FRAME_DURATION(OPUS_FRAMESIZE_20_MS));
-  {
-    opus_int32 tmp;
-    int ret;
-    ret = opus_multistream_encoder_ctl(st, OPUS_GET_LOOKAHEAD(&tmp));
-    if (ret == OPUS_OK) enc->header.preskip = tmp;
-    else enc->header.preskip = 0;
-    enc->global_granule_offset = enc->header.preskip;
-  }
+  enc->global_granule_offset = -1;
   enc->curr_granule = 0;
   enc->write_granule = 0;
   enc->last_page_granule = 0;
@@ -389,6 +382,15 @@ static void init_stream(OggOpusEnc *enc) {
   }
   comment_pad(&enc->streams->comment, &enc->streams->comment_length, enc->comment_padding);
 
+  /* Get preskip at the last minute (when it can no longer change). */
+  if (enc->global_granule_offset == -1) {
+    opus_int32 tmp;
+    int ret;
+    ret = opus_multistream_encoder_ctl(enc->st, OPUS_GET_LOOKAHEAD(&tmp));
+    if (ret == OPUS_OK) enc->header.preskip = tmp;
+    else enc->header.preskip = 0;
+    enc->global_granule_offset = enc->header.preskip;
+  }
   /*Write header*/
   {
     int packet_size;

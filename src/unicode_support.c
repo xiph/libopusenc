@@ -35,8 +35,6 @@
 #include <windows.h>
 #include <io.h>
 
-static UINT g_old_output_cp = ((UINT)-1);
-
 static wchar_t *utf8_to_utf16(const char *input)
 {
 	wchar_t *Buffer;

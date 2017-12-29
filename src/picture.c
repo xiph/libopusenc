@@ -43,7 +43,7 @@ static const char BASE64_TABLE[64]={
 
 /*Utility function for base64 encoding METADATA_BLOCK_PICTURE tags.
   Stores BASE64_LENGTH(len)+1 bytes in dst (including a terminating NUL).*/
-void base64_encode(char *dst, const char *src, int len){
+static void base64_encode(char *dst, const char *src, int len){
   unsigned s0;
   unsigned s1;
   unsigned s2;
@@ -82,7 +82,7 @@ void base64_encode(char *dst, const char *src, int len){
 
 /*A version of strncasecmp() that is guaranteed to only ignore the case of
    ASCII characters.*/
-int oi_strncasecmp(const char *a, const char *b, int n){
+static int oi_strncasecmp(const char *a, const char *b, int n){
   int i;
   for(i=0;i<n;i++){
     int aval;
@@ -104,16 +104,16 @@ int oi_strncasecmp(const char *a, const char *b, int n){
   return 0;
 }
 
-int is_jpeg(const unsigned char *buf, size_t length){
+static int is_jpeg(const unsigned char *buf, size_t length){
   return length>=11&&memcmp(buf,"\xFF\xD8\xFF\xE0",4)==0
    &&(buf[4]<<8|buf[5])>=16&&memcmp(buf+6,"JFIF",5)==0;
 }
 
-int is_png(const unsigned char *buf, size_t length){
+static int is_png(const unsigned char *buf, size_t length){
   return length>=8&&memcmp(buf,"\x89PNG\x0D\x0A\x1A\x0A",8)==0;
 }
 
-int is_gif(const unsigned char *buf, size_t length){
+static int is_gif(const unsigned char *buf, size_t length){
   return length>=6
    &&(memcmp(buf,"GIF87a",6)==0||memcmp(buf,"GIF89a",6)==0);
 }
@@ -124,7 +124,7 @@ int is_gif(const unsigned char *buf, size_t length){
 /*Tries to extract the width, height, bits per pixel, and palette size of a
    PNG.
   On failure, simply leaves its outputs unmodified.*/
-void extract_png_params(const unsigned char *data, size_t data_length,
+static void extract_png_params(const unsigned char *data, size_t data_length,
                         opus_uint32 *width, opus_uint32 *height,
                         opus_uint32 *depth, opus_uint32 *colors,
                         int *has_palette){
@@ -168,7 +168,7 @@ void extract_png_params(const unsigned char *data, size_t data_length,
 /*Tries to extract the width, height, bits per pixel, and palette size of a
    GIF.
   On failure, simply leaves its outputs unmodified.*/
-void extract_gif_params(const unsigned char *data, size_t data_length,
+static void extract_gif_params(const unsigned char *data, size_t data_length,
                         opus_uint32 *width, opus_uint32 *height,
                         opus_uint32 *depth, opus_uint32 *colors,
                         int *has_palette){
@@ -186,7 +186,7 @@ void extract_gif_params(const unsigned char *data, size_t data_length,
 /*Tries to extract the width, height, bits per pixel, and palette size of a
    JPEG.
   On failure, simply leaves its outputs unmodified.*/
-void extract_jpeg_params(const unsigned char *data, size_t data_length,
+static void extract_jpeg_params(const unsigned char *data, size_t data_length,
                          opus_uint32 *width, opus_uint32 *height,
                          opus_uint32 *depth, opus_uint32 *colors,
                          int *has_palette){
@@ -235,7 +235,7 @@ void extract_jpeg_params(const unsigned char *data, size_t data_length,
    have already been added, to ensure only one is allowed.
   Return: A Base64-encoded string suitable for use in a METADATA_BLOCK_PICTURE
    tag.*/
-char *parse_picture_specification(const char *filename, int picture_type, const char *description,
+char *_ope_parse_picture_specification(const char *filename, int picture_type, const char *description,
                                   int *error, int *seen_file_icons){
   FILE          *picture_file;
   opus_uint32  width;
@@ -256,6 +256,15 @@ char *parse_picture_specification(const char *filename, int picture_type, const 
     Instead, try to open the file.
     If it exists, the user probably meant the file.*/
   if (picture_type < 0) picture_type=3;
+  if (picture_type > 20) {
+    *error=OPE_INVALID_PICTURE;
+    return NULL;
+  }
+  if(picture_type>=1&&picture_type<=2&&(*seen_file_icons&picture_type)){
+    *error=OPE_INVALID_PICTURE;
+    return NULL;
+  }
+
   if (description == NULL) description = "";
   picture_file=fopen(filename,"rb");
   /*Buffer size: 8 static 4-byte fields plus 2 dynamic fields, plus the

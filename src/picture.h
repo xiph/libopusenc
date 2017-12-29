@@ -39,30 +39,7 @@ typedef enum{
 
 #define BASE64_LENGTH(len) (((len)+2)/3*4)
 
-/*Utility function for base64 encoding METADATA_BLOCK_PICTURE tags.
-  Stores BASE64_LENGTH(len)+1 bytes in dst (including a terminating NUL).*/
-void base64_encode(char *dst, const char *src, int len);
-
-int oi_strncasecmp(const char *a, const char *b, int n);
-
-int is_jpeg(const unsigned char *buf, size_t length);
-int is_png(const unsigned char *buf, size_t length);
-int is_gif(const unsigned char *buf, size_t length);
-
-void extract_png_params(const unsigned char *data, size_t data_length,
-                        opus_uint32 *width, opus_uint32 *height,
-                        opus_uint32 *depth, opus_uint32 *colors,
-                        int *has_palette);
-void extract_gif_params(const unsigned char *data, size_t data_length,
-                        opus_uint32 *width, opus_uint32 *height,
-                        opus_uint32 *depth, opus_uint32 *colors,
-                        int *has_palette);
-void extract_jpeg_params(const unsigned char *data, size_t data_length,
-                         opus_uint32 *width, opus_uint32 *height,
-                         opus_uint32 *depth, opus_uint32 *colors,
-                         int *has_palette);
-
-char *parse_picture_specification(const char *filename, int picture_type, const char *description,
+char *_ope_parse_picture_specification(const char *filename, int picture_type, const char *description,
                                   int *error, int *seen_file_icons);
 
 #define WRITE_U32_BE(buf, val) \

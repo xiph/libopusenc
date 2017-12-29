@@ -136,7 +136,7 @@ int ope_comments_add_string(OggOpusComments *comments, const char *tag_and_val) 
 int ope_comments_add_picture(OggOpusComments *comments, const char *filename, int picture_type, const char *description) {
   char *picture_data;
   int err;
-  picture_data = parse_picture_specification(filename, picture_type, description, &err, &comments->seen_file_icons);
+  picture_data = _ope_parse_picture_specification(filename, picture_type, description, &err, &comments->seen_file_icons);
   if (picture_data == NULL || err != OPE_OK){
     return err;
   }

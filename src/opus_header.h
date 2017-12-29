@@ -52,6 +52,4 @@ int _ope_comment_add(char **comments, int* length, const char *tag, const char *
 
 void _ope_comment_pad(char **comments, int* length, int amount);
 
-int _ope_comment_replace_vendor_string(char **comments, int* length, const char *vendor_string);
-
 #endif

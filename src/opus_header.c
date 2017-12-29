@@ -101,7 +101,7 @@ static int write_chars(Packet *p, const unsigned char *str, int nb_chars)
    return 1;
 }
 
-int opus_header_to_packet(const OpusHeader *h, unsigned char *packet, int len)
+int _ope_opus_header_to_packet(const OpusHeader *h, unsigned char *packet, int len)
 {
    int i;
    Packet p;
@@ -184,7 +184,7 @@ The comment header is decoded as follows:
                                      buf[base]=(val)&0xff; \
                                  }while(0)
 
-void comment_init(char **comments, int* length, const char *vendor_string)
+void _ope_comment_init(char **comments, int* length, const char *vendor_string)
 {
   /*The 'vendor' field should be the actual encoding library used.*/
   int vendor_length=strlen(vendor_string);
@@ -200,7 +200,7 @@ void comment_init(char **comments, int* length, const char *vendor_string)
   *comments=p;
 }
 
-int comment_add(char **comments, int* length, const char *tag, const char *val)
+int _ope_comment_add(char **comments, int* length, const char *tag, const char *val)
 {
   char* p=*comments;
   int vendor_length=readint(p, 8);
@@ -224,7 +224,7 @@ int comment_add(char **comments, int* length, const char *tag, const char *val)
   return 0;
 }
 
-void comment_pad(char **comments, int* length, int amount)
+void _ope_comment_pad(char **comments, int* length, int amount)
 {
   if(amount>0){
     int i;
@@ -241,7 +241,7 @@ void comment_pad(char **comments, int* length, int amount)
   }
 }
 
-int comment_replace_vendor_string(char **comments, int* length, const char *vendor_string)
+int _ope_comment_replace_vendor_string(char **comments, int* length, const char *vendor_string)
 {
   char* p=*comments;
   int vendor_length;

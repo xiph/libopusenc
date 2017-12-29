@@ -87,7 +87,7 @@ OggOpusComments *ope_comments_create() {
   if (c == NULL) return NULL;
   libopus_str = opus_get_version_string();
   snprintf(vendor_str, sizeof(vendor_str), "%s, %s %s", libopus_str, PACKAGE_NAME, PACKAGE_VERSION);
-  comment_init(&c->comment, &c->comment_length, vendor_str);
+  _ope_comment_init(&c->comment, &c->comment_length, vendor_str);
   if (c->comment == NULL) {
     free(c);
     return NULL;
@@ -122,14 +122,14 @@ void ope_comments_destroy(OggOpusComments *comments){
 int ope_comments_add(OggOpusComments *comments, const char *tag, const char *val) {
   if (tag == NULL || val == NULL) return OPE_BAD_ARG;
   if (strchr(tag, '=')) return OPE_BAD_ARG;
-  if (comment_add(&comments->comment, &comments->comment_length, tag, val)) return OPE_ALLOC_FAIL;
+  if (_ope_comment_add(&comments->comment, &comments->comment_length, tag, val)) return OPE_ALLOC_FAIL;
   return OPE_OK;
 }
 
 /* Add a comment. */
 int ope_comments_add_string(OggOpusComments *comments, const char *tag_and_val) {
   if (!strchr(tag_and_val, '=')) return OPE_BAD_ARG;
-  if (comment_add(&comments->comment, &comments->comment_length, NULL, tag_and_val)) return OPE_ALLOC_FAIL;
+  if (_ope_comment_add(&comments->comment, &comments->comment_length, NULL, tag_and_val)) return OPE_ALLOC_FAIL;
   return OPE_OK;
 }
 
@@ -140,7 +140,7 @@ int ope_comments_add_picture(OggOpusComments *comments, const char *filename, in
   if (picture_data == NULL || err != OPE_OK){
     return err;
   }
-  comment_add(&comments->comment, &comments->comment_length, "METADATA_BLOCK_PICTURE", picture_data);
+  _ope_comment_add(&comments->comment, &comments->comment_length, "METADATA_BLOCK_PICTURE", picture_data);
   free(picture_data);
   return OPE_OK;
 }
@@ -380,7 +380,7 @@ static void init_stream(OggOpusEnc *enc) {
     }
     oggp_set_muxing_delay(enc->oggp, enc->max_ogg_delay);
   }
-  comment_pad(&enc->streams->comment, &enc->streams->comment_length, enc->comment_padding);
+  _ope_comment_pad(&enc->streams->comment, &enc->streams->comment_length, enc->comment_padding);
 
   /* Get preskip at the last minute (when it can no longer change). */
   if (enc->global_granule_offset == -1) {
@@ -396,7 +396,7 @@ static void init_stream(OggOpusEnc *enc) {
     int packet_size;
     unsigned char *p;
     p = oggp_get_packet_buffer(enc->oggp, 276);
-    packet_size = opus_header_to_packet(&enc->header, p, 276);
+    packet_size = _ope_opus_header_to_packet(&enc->header, p, 276);
     if (enc->packet_callback) enc->packet_callback(enc->packet_callback_data, p, packet_size, 0);
     oggp_commit_packet(enc->oggp, packet_size, 0, 0);
     oe_flush_page(enc);

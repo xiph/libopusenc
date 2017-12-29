@@ -33,6 +33,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include "picture.h"
+#include "unicode_support.h"
 
 static const char BASE64_TABLE[64]={
   'A','B','C','D','E','F','G','H','I','J','K','L','M','N','O','P',
@@ -262,7 +263,7 @@ char *_ope_parse_picture_specification(const char *filename, int picture_type, c
   }
 
   if (description == NULL) description = "";
-  picture_file=fopen(filename,"rb");
+  picture_file=_ope_fopen(filename,"rb");
   /*Buffer size: 8 static 4-byte fields plus 2 dynamic fields, plus the
      file/URL data.
     We reserve at least 10 bytes for the media type, in case we still need to

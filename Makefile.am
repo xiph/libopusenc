@@ -16,14 +16,16 @@ noinst_HEADERS = src/arch.h \
 		 src/picture.h \
 		 src/resample_sse.h \
 		 src/speex_resampler.h \
-		 src/stack_alloc.h
+		 src/stack_alloc.h \
+		 src/unicode_support.h
 
 libopusenc_la_SOURCES = \
 	src/ogg_packer.c \
 	src/opus_header.c \
 	src/opusenc.c \
 	src/picture.c \
-	src/resample.c
+	src/resample.c \
+	src/unicode_support.c
 libopusenc_la_LIBADD = $(DEPS_LIBS) $(lrintf_lib)
 libopusenc_la_LDFLAGS = -no-undefined \
  -version-info @OP_LT_CURRENT@:@OP_LT_REVISION@:@OP_LT_AGE@

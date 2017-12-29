@@ -42,6 +42,7 @@
 #include "speex_resampler.h"
 #include "picture.h"
 #include "ogg_packer.h"
+#include "unicode_support.h"
 
 /* Bump this when we change the ABI. */
 #define OPE_ABI_VERSION 0
@@ -234,7 +235,7 @@ OggOpusEnc *ope_encoder_create_file(const char *path, OggOpusComments *comments,
   if (enc == NULL || (error && *error)) {
     return NULL;
   }
-  obj->file = fopen(path, "wb");
+  obj->file = _ope_fopen(path, "wb");
   if (!obj->file) {
     if (error) *error = OPE_CANNOT_OPEN;
     ope_encoder_destroy(enc);
@@ -695,7 +696,7 @@ int ope_encoder_continue_new_file(OggOpusEnc *enc, const char *path, OggOpusComm
   int ret;
   struct StdioObject *obj;
   if (!(obj = malloc(sizeof(*obj)))) return OPE_ALLOC_FAIL;
-  obj->file = fopen(path, "wb");
+  obj->file = _ope_fopen(path, "wb");
   if (!obj->file) {
     free(obj);
     /* By trying to open the file first, we can recover if we can't open it. */

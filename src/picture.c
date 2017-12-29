@@ -251,10 +251,6 @@ char *_ope_parse_picture_specification(const char *filename, int picture_type, c
   size_t         data_length;
   size_t         b64_length;
   *error = OPE_OK;
-  /*If a filename has a '|' in it, there's no way we can distinguish it from a
-     full specification just from the spec string.
-    Instead, try to open the file.
-    If it exists, the user probably meant the file.*/
   if (picture_type < 0) picture_type=3;
   if (picture_type > 20) {
     *error=OPE_INVALID_PICTURE;

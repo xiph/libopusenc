@@ -88,6 +88,7 @@ OggOpusComments *ope_comments_create() {
   libopus_str = opus_get_version_string();
   snprintf(vendor_str, sizeof(vendor_str), "%s, %s %s", libopus_str, PACKAGE_NAME, PACKAGE_VERSION);
   _ope_comment_init(&c->comment, &c->comment_length, vendor_str);
+  c->seen_file_icons = 0;
   if (c->comment == NULL) {
     free(c);
     return NULL;

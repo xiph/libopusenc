@@ -379,7 +379,8 @@ int oggp_get_next_page(oggpacker *oggp, unsigned char **page, oggp_int32 *bytes)
   }
   p = &oggp->pages[0];
   header_size = 27 + p->lacing_size;
-  ptr = &oggp->buf[p->buf_pos - header_size];
+  /* Don't use indexing in case header_size > p->buf_pos. */
+  ptr = oggp->buf + p->buf_pos - header_size;
   len = p->buf_size + header_size;
   memcpy(&ptr[27], &oggp->lacing[p->lacing_pos], p->lacing_size);
   memcpy(ptr, "OggS", 4);

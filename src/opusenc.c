@@ -637,7 +637,7 @@ int ope_encoder_drain(OggOpusEnc *enc) {
   /* Check if it's already been drained. */
   if (enc->streams == NULL) return OPE_TOO_LATE;
   if (enc->re) resampler_drain = speex_resampler_get_output_latency(enc->re);
-  pad_samples = MAX(LPC_PADDING, enc->global_granule_offset + enc->frame_size + resampler_drain);
+  pad_samples = MAX(LPC_PADDING, enc->global_granule_offset + enc->frame_size + resampler_drain + 1);
   if (!enc->streams->stream_is_init) init_stream(enc);
   shift_buffer(enc);
   assert(enc->buffer_end + pad_samples <= BUFFER_SAMPLES);

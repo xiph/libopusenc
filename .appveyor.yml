@@ -1,0 +1,30 @@
+image: Visual Studio 2015
+configuration:
+- Debug
+- DebugDLL
+- Release
+- ReleaseDLL
+
+platform:
+- Win32
+- x64
+
+environment:
+  opus_url: https://ci.appveyor.com/api/projects/$(APPVEYOR_ACCOUNT_NAME)/opus/artifacts/opus.zip
+
+install:
+- cd %APPVEYOR_BUILD_FOLDER%
+- 'curl -LOG --data-urlencode "job=Configuration: %CONFIGURATION%; Platform: %PLATFORM%" %OPUS_URL%'
+- 7z x opus.zip -oopus-artifacts
+- move /Y opus-artifacts ..\opus
+
+build:
+  project: win32\VS2015\opusenc.sln
+  parallel: true
+  verbosity: minimal
+
+after_build:
+- 7z a libopusenc.zip win32\VS2015\%PLATFORM%\%CONFIGURATION%\opusenc.??? include\
+
+artifacts:
+- path: libopusenc.zip

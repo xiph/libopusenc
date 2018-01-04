@@ -48,7 +48,13 @@ EXTRA_DIST = \
  libopusenc-uninstalled.pc.in \
  doc/Doxyfile.in \
  doc/opus_logo.svg \
- doc/Makefile
+ doc/Makefile \
+ win32/VS2015/opusenc.sln \
+ win32/VS2015/opusenc.vcxproj \
+ win32/VS2015/opusenc.vcxproj.filters \
+ win32/VS2015/common.props \
+ win32/genversion.bat \
+ win32/config.h
 
 # Targets to build and install just the library without the docs
 libopusenc install-libopusenc: NO_DOXYGEN = 1

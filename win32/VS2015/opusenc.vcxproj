@@ -43,6 +43,7 @@
     <ClInclude Include="..\..\src\resample_sse.h" />
     <ClInclude Include="..\..\src\speex_resampler.h" />
     <ClInclude Include="..\..\src\stack_alloc.h" />
+    <ClInclude Include="..\..\src\unicode_support.h" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="..\..\src\ogg_packer.c" />
@@ -50,6 +51,7 @@
     <ClCompile Include="..\..\src\opus_header.c" />
     <ClCompile Include="..\..\src\picture.c" />
     <ClCompile Include="..\..\src\resample.c" />
+    <ClCompile Include="..\..\src\unicode_support.c" />
   </ItemGroup>
   <PropertyGroup Label="Globals">
     <ProjectGuid>{755C376F-0786-46A6-B706-A55E37430A4A}</ProjectGuid>

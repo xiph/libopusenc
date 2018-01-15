@@ -231,8 +231,13 @@ OggOpusEnc *ope_encoder_create_file(const char *path, OggOpusComments *comments,
   OggOpusEnc *enc;
   struct StdioObject *obj;
   obj = malloc(sizeof(*obj));
+  if (obj == NULL) {
+    if (error) *error = OPE_ALLOC_FAIL;
+    return NULL;
+  }
   enc = ope_encoder_create_callbacks(&stdio_callbacks, obj, comments, rate, channels, family, error);
   if (enc == NULL || (error && *error)) {
+    free(obj);
     return NULL;
   }
   obj->file = _ope_fopen(path, "wb");
@@ -291,9 +296,9 @@ OggOpusEnc *ope_encoder_create_callbacks(const OpusEncCallbacks *callbacks, void
   }
 
   if ( (enc = malloc(sizeof(*enc))) == NULL) goto fail;
-  enc->streams = NULL;
+  enc->buffer = NULL;
+  enc->lpc_buffer = NULL;
   if ( (enc->streams = stream_create(comments)) == NULL) goto fail;
-  enc->streams->next = NULL;
   enc->last_stream = enc->streams;
   enc->oggp = NULL;
   enc->unrecoverable = 0;
@@ -334,8 +339,6 @@ OggOpusEnc *ope_encoder_create_callbacks(const OpusEncCallbacks *callbacks, void
     /* Allocate an extra LPC_PADDING samples so we can do the padding in-place. */
     if ( (enc->lpc_buffer = malloc(sizeof(*enc->lpc_buffer)*(LPC_INPUT+LPC_PADDING)*channels)) == NULL) goto fail;
     memset(enc->lpc_buffer, 0, sizeof(*enc->lpc_buffer)*LPC_INPUT*channels);
-  } else {
-    enc->lpc_buffer = NULL;
   }
   enc->buffer_start = enc->buffer_end = 0;
   enc->st = st;
@@ -348,10 +351,10 @@ OggOpusEnc *ope_encoder_create_callbacks(const OpusEncCallbacks *callbacks, void
   return enc;
 fail:
   if (enc) {
-    free(enc);
     if (enc->buffer) free(enc->buffer);
     if (enc->streams) stream_destroy(enc->streams);
     if (enc->lpc_buffer) free(enc->lpc_buffer);
+    free(enc);
   }
   if (st) {
     opus_multistream_encoder_destroy(st);

@@ -191,11 +191,14 @@ void _ope_comment_init(char **comments, int* length, const char *vendor_string)
   int user_comment_list_length=0;
   int len=8+4+vendor_length+4;
   char *p=(char*)malloc(len);
-  if (p == NULL) return;
-  memcpy(p, "OpusTags", 8);
-  writeint(p, 8, vendor_length);
-  memcpy(p+12, vendor_string, vendor_length);
-  writeint(p, 12+vendor_length, user_comment_list_length);
+  if (p == NULL) {
+    len=0;
+  } else {
+    memcpy(p, "OpusTags", 8);
+    writeint(p, 8, vendor_length);
+    memcpy(p+12, vendor_string, vendor_length);
+    writeint(p, 12+vendor_length, user_comment_list_length);
+  }
   *length=len;
   *comments=p;
 }

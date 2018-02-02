@@ -184,6 +184,7 @@ struct OggOpusEnc {
   opus_int64 curr_granule;
   opus_int64 write_granule;
   opus_int64 last_page_granule;
+  int draining;
   float *lpc_buffer;
   unsigned char *chaining_keyframe;
   int chaining_keyframe_length;
@@ -334,6 +335,7 @@ OggOpusEnc *ope_encoder_create_callbacks(const OpusEncCallbacks *callbacks, void
   enc->curr_granule = 0;
   enc->write_granule = 0;
   enc->last_page_granule = 0;
+  enc->draining = 0;
   if ( (enc->buffer = malloc(sizeof(*enc->buffer)*BUFFER_SAMPLES*channels)) == NULL) goto fail;
   if (rate != 48000) {
     /* Allocate an extra LPC_PADDING samples so we can do the padding in-place. */
@@ -425,6 +427,11 @@ static void shift_buffer(OggOpusEnc *enc) {
   }
 }
 
+static int compute_frame_samples(int size_request) {
+  if (size_request <= OPUS_FRAMESIZE_40_MS) return 120<<(size_request-OPUS_FRAMESIZE_2_5_MS);
+  else return (size_request-OPUS_FRAMESIZE_2_5_MS-2)*960;
+}
+
 static void encode_buffer(OggOpusEnc *enc) {
   opus_int32 max_packet_size;
   /* Round up when converting the granule pos because the decoder will round down. */
@@ -445,6 +452,15 @@ static void encode_buffer(OggOpusEnc *enc) {
     if (enc->curr_granule + 2*enc->frame_size>= end_granule48k && enc->streams->next) {
       opus_multistream_encoder_ctl(enc->st, OPUS_SET_PREDICTION_DISABLED(1));
       is_keyframe = 1;
+    }
+    /* Handle the last packet by making sure not to encode too much padding. */
+    if (enc->curr_granule+enc->frame_size >= end_granule48k && enc->draining) {
+      int min_samples;
+      int frame_size_request = OPUS_FRAMESIZE_2_5_MS;
+      /* Minimum frame size required for the current frame to still meet the e_o_s condition. */
+      min_samples = end_granule48k - enc->curr_granule;
+      while (compute_frame_samples(frame_size_request) < min_samples) frame_size_request++;
+      ope_encoder_ctl(enc, OPUS_SET_EXPERT_FRAME_DURATION(frame_size_request));
     }
     packet = oggp_get_packet_buffer(enc->oggp, max_packet_size);
     nbBytes = opus_multistream_encode_float(enc->st, &enc->buffer[enc->channels*enc->buffer_start],
@@ -662,6 +678,7 @@ int ope_encoder_drain(OggOpusEnc *enc) {
     enc->buffer_end += pad_samples;
   }
   enc->decision_delay = 0;
+  enc->draining = 1;
   assert(enc->buffer_end <= BUFFER_SAMPLES);
   encode_buffer(enc);
   if (enc->unrecoverable) return OPE_UNRECOVERABLE;
@@ -784,12 +801,7 @@ int ope_encoder_ctl(OggOpusEnc *enc, int request, ...) {
         break;
       }
       ret = opus_multistream_encoder_ctl(enc->st, request, value);
-      if (ret == OPUS_OK) {
-        if (value <= OPUS_FRAMESIZE_40_MS)
-          enc->frame_size = 120<<(value-OPUS_FRAMESIZE_2_5_MS);
-        else
-          enc->frame_size = (value-OPUS_FRAMESIZE_2_5_MS-2)*960;
-      }
+      if (ret == OPUS_OK) enc->frame_size = compute_frame_samples(value);
     }
     break;
     case OPUS_GET_APPLICATION_REQUEST:

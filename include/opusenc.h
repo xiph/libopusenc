@@ -135,8 +135,8 @@ extern "C" {
 /* FIXME: Add type-checking macros to these. */
 #define OPE_SET_PACKET_CALLBACK(x,u) OPE_SET_PACKET_CALLBACK_REQUEST, (x), (u)
 /*#define OPE_GET_PACKET_CALLBACK(x,u) OPE_GET_PACKET_CALLBACK_REQUEST, (x), (u)*/
-#define OPE_SET_HEADER_GAIN(x,u) OPE_SET_HEADER_GAIN_REQUEST, __opus_check_int(x)
-#define OPE_GET_HEADER_GAIN(x,u) OPE_GET_HEADER_GAIN_REQUEST, __opus_check_int_ptr(x)
+#define OPE_SET_HEADER_GAIN(x) OPE_SET_HEADER_GAIN_REQUEST, __opus_check_int(x)
+#define OPE_GET_HEADER_GAIN(x) OPE_GET_HEADER_GAIN_REQUEST, __opus_check_int_ptr(x)
 /*@}*/
 /*@}*/
 

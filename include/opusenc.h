@@ -264,6 +264,17 @@ OPE_EXPORT OggOpusEnc *ope_encoder_create_callbacks(const OpusEncCallbacks *call
     */
 OPE_EXPORT OggOpusEnc *ope_encoder_create_pull(OggOpusComments *comments, opus_int32 rate, int channels, int family, int *error);
 
+/** Deferred initialization of the encoder to force an explicit channel mapping.
+    \param[in,out] enc         Encoder
+    \param family              Mapping family (0 for mono/stereo, 1 for surround)
+    \param streams             Total number of streams
+    \param coupled_streams     Number of coupled streams
+    \param mapping             Channel mapping
+    \return Error code
+ */
+OPE_EXPORT int ope_encoder_deferred_init_with_mapping(OggOpusEnc *enc, int family, int streams, 
+    int coupled_streams, const unsigned char *mapping);
+
 /** Add/encode any number of float samples to the stream.
     \param[in,out] enc         Encoder
     \param pcm                 Floating-point PCM values in the +/-1 range (interleaved if multiple channels)

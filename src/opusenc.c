@@ -283,7 +283,7 @@ OggOpusEnc *ope_encoder_create_callbacks(const OpusEncCallbacks *callbacks, void
   OpusMSEncoder *st=NULL;
   OggOpusEnc *enc=NULL;
   int ret;
-  if (family != 0 && family != 1 && family != 255) {
+  if (family != 0 && family != 1 && family != 255 && family != -1) {
     if (error) *error = OPE_UNIMPLEMENTED;
     return NULL;
   }
@@ -302,7 +302,8 @@ OggOpusEnc *ope_encoder_create_callbacks(const OpusEncCallbacks *callbacks, void
   if ( (enc->streams = stream_create(comments)) == NULL) goto fail;
   enc->last_stream = enc->streams;
   enc->oggp = NULL;
-  enc->unrecoverable = 0;
+  /* Not initializing anything is an unrecoverable error. */
+  enc->unrecoverable = family == -1;
   enc->pull_api = 0;
   enc->packet_callback = NULL;
   enc->rate = rate;
@@ -317,11 +318,15 @@ OggOpusEnc *ope_encoder_create_callbacks(const OpusEncCallbacks *callbacks, void
   enc->header.channel_mapping=family;
   enc->header.input_sample_rate=rate;
   enc->header.gain=0;
-  st=opus_multistream_surround_encoder_create(48000, channels, enc->header.channel_mapping,
-      &enc->header.nb_streams, &enc->header.nb_coupled,
-      enc->header.stream_map, OPUS_APPLICATION_AUDIO, &ret);
-  if (! (ret == OPUS_OK && st != NULL) ) {
-    goto fail;
+  if (family != -1) {
+    st=opus_multistream_surround_encoder_create(48000, channels, enc->header.channel_mapping,
+        &enc->header.nb_streams, &enc->header.nb_coupled,
+        enc->header.stream_map, OPUS_APPLICATION_AUDIO, &ret);
+    if (! (ret == OPUS_OK && st != NULL) ) {
+      goto fail;
+    }
+    enc->st = st;
+    opus_multistream_encoder_ctl(st, OPUS_SET_EXPERT_FRAME_DURATION(OPUS_FRAMESIZE_20_MS));
   }
   if (rate != 48000) {
     enc->re = speex_resampler_init(channels, rate, 48000, 5, NULL);
@@ -330,7 +335,6 @@ OggOpusEnc *ope_encoder_create_callbacks(const OpusEncCallbacks *callbacks, void
   } else {
     enc->re = NULL;
   }
-  opus_multistream_encoder_ctl(st, OPUS_SET_EXPERT_FRAME_DURATION(OPUS_FRAMESIZE_20_MS));
   enc->global_granule_offset = -1;
   enc->curr_granule = 0;
   enc->write_granule = 0;
@@ -343,7 +347,6 @@ OggOpusEnc *ope_encoder_create_callbacks(const OpusEncCallbacks *callbacks, void
     memset(enc->lpc_buffer, 0, sizeof(*enc->lpc_buffer)*LPC_INPUT*channels);
   }
   enc->buffer_start = enc->buffer_end = 0;
-  enc->st = st;
   if (callbacks != NULL)
   {
     enc->callbacks = *callbacks;
@@ -370,6 +373,32 @@ OggOpusEnc *ope_encoder_create_pull(OggOpusComments *comments, opus_int32 rate, 
   OggOpusEnc *enc = ope_encoder_create_callbacks(NULL, NULL, comments, rate, channels, family, error);
   if (enc) enc->pull_api = 1;
   return enc;
+}
+
+int ope_encoder_deferred_init_with_mapping(OggOpusEnc *enc, int family, int streams, 
+    int coupled_streams, const unsigned char *mapping) {
+  int ret;
+  int i;
+  OpusMSEncoder *st;
+  if (enc->st!=NULL) {
+    return OPE_TOO_LATE;
+  }
+  if (streams <= 0 || streams>255 || coupled_streams<0 || coupled_streams >= 128 || streams+coupled_streams > 255) return OPE_BAD_ARG;
+  st=opus_multistream_encoder_create(48000, enc->channels, streams, coupled_streams, mapping, OPUS_APPLICATION_AUDIO, &ret);
+  if (! (ret == OPUS_OK && st != NULL) ) {
+    goto fail;
+  }
+  enc->st = st;
+  opus_multistream_encoder_ctl(st, OPUS_SET_EXPERT_FRAME_DURATION(OPUS_FRAMESIZE_20_MS));
+  enc->unrecoverable = 0;
+  enc->header.channel_mapping=family;
+  enc->header.nb_streams = streams;
+  enc->header.nb_coupled = coupled_streams;
+  for (i=0;i<streams+coupled_streams;i++)
+    enc->header.stream_map[i] = mapping[i];
+  return OPE_OK;
+fail:
+  return OPE_ALLOC_FAIL;
 }
 
 static void init_stream(OggOpusEnc *enc) {
@@ -699,7 +728,7 @@ void ope_encoder_destroy(OggOpusEnc *enc) {
   if (enc->chaining_keyframe) free(enc->chaining_keyframe);
   free(enc->buffer);
   if (enc->oggp) oggp_destroy(enc->oggp);
-  opus_multistream_encoder_destroy(enc->st);
+  if (enc->st) opus_multistream_encoder_destroy(enc->st);
   if (enc->re) speex_resampler_destroy(enc->re);
   if (enc->lpc_buffer) free(enc->lpc_buffer);
   free(enc);

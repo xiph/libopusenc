@@ -228,6 +228,68 @@ static void extract_jpeg_params(const unsigned char *data, size_t data_length,
 
 #define IMAX(a,b) ((a) > (b) ? (a) : (b))
 
+static unsigned char *_ope_read_picture_file(const char *filename, const char *description, int *error, size_t *size, size_t *offset) {
+  FILE          *picture_file;
+  size_t         cbuf;
+  size_t         nbuf;
+  size_t         data_offset;
+  unsigned char *buf;
+  if (description == NULL) description = "";
+  picture_file=_ope_fopen(filename,"rb");
+  /*Buffer size: 8 static 4-byte fields plus 2 dynamic fields, plus the
+     file/URL data.
+    We reserve at least 10 bytes for the media type, in case we still need to
+     extract it from the file.*/
+  data_offset=32+strlen(description)+10;
+  buf=NULL;
+  /*Complicated case: we have a real file.
+    Read it in, attempt to parse the media type and image dimensions if
+     necessary, and validate what the user passed in.*/
+  if(picture_file==NULL){
+    *error = OPE_CANNOT_OPEN;
+    return NULL;
+  }
+  nbuf=data_offset;
+  /*Add a reasonable starting image file size.*/
+  cbuf=data_offset+65536;
+  for(;;){
+    unsigned char *new_buf;
+    size_t         nread;
+    new_buf=realloc(buf,cbuf);
+    if(new_buf==NULL){
+      fclose(picture_file);
+      free(buf);
+      *error = OPE_ALLOC_FAIL;
+      return NULL;
+    }
+    buf=new_buf;
+    nread=fread(buf+nbuf,1,cbuf-nbuf,picture_file);
+    nbuf+=nread;
+    if(nbuf<cbuf){
+      int file_error;
+      file_error=ferror(picture_file);
+      fclose(picture_file);
+      if(file_error){
+        free(buf);
+        *error = OPE_INVALID_PICTURE;
+        return NULL;
+      }
+      break;
+    }
+    if(cbuf==0xFFFFFFFF){
+      fclose(picture_file);
+      free(buf);
+      *error = OPE_INVALID_PICTURE;
+      return NULL;
+    }
+    else if(cbuf>0x7FFFFFFFU)cbuf=0xFFFFFFFFU;
+    else cbuf=cbuf<<1|1;
+  }
+  *size = nbuf;
+  *offset = data_offset;
+  return buf;
+}
+
 /*Parse a picture SPECIFICATION as given on the command-line.
   spec: The specification.
   error_message: Returns an error message on error.
@@ -237,7 +299,6 @@ static void extract_jpeg_params(const unsigned char *data, size_t data_length,
    tag.*/
 char *_ope_parse_picture_specification(const char *filename, int picture_type, const char *description,
                                   int *error, int *seen_file_icons){
-  FILE          *picture_file;
   opus_uint32  width;
   opus_uint32  height;
   opus_uint32  depth;
@@ -245,11 +306,11 @@ char *_ope_parse_picture_specification(const char *filename, int picture_type, c
   unsigned char *buf;
   const char    *mime_type;
   char          *out;
-  size_t         cbuf;
   size_t         nbuf;
   size_t         data_offset;
   size_t         data_length;
   size_t         b64_length;
+  int          has_palette;
   *error = OPE_OK;
   if (picture_type < 0) picture_type=3;
   if (picture_type > 20) {
@@ -260,85 +321,32 @@ char *_ope_parse_picture_specification(const char *filename, int picture_type, c
     *error=OPE_INVALID_PICTURE;
     return NULL;
   }
-
-  if (description == NULL) description = "";
-  picture_file=_ope_fopen(filename,"rb");
-  /*Buffer size: 8 static 4-byte fields plus 2 dynamic fields, plus the
-     file/URL data.
-    We reserve at least 10 bytes for the media type, in case we still need to
-     extract it from the file.*/
-  data_offset=32+strlen(description)+10;
-  buf=NULL;
+  buf = _ope_read_picture_file(filename, description, error, &nbuf, &data_offset);
+  if (buf == NULL) return NULL;
+  data_length=nbuf-data_offset;
+  /*Try to extract the image dimensions/color information from the file.*/
+  width=height=depth=colors=0;
+  has_palette=-1;
   {
-    int          has_palette;
-    /*Complicated case: we have a real file.
-      Read it in, attempt to parse the media type and image dimensions if
-       necessary, and validate what the user passed in.*/
-    if(picture_file==NULL){
-      *error = OPE_CANNOT_OPEN;
+    if(is_jpeg(buf+data_offset,data_length)){
+      mime_type="image/jpeg";
+      extract_jpeg_params(buf+data_offset,data_length,
+       &width,&height,&depth,&colors,&has_palette);
+    }
+    else if(is_png(buf+data_offset,data_length)){
+      mime_type="image/png";
+      extract_png_params(buf+data_offset,data_length,
+       &width,&height,&depth,&colors,&has_palette);
+    }
+    else if(is_gif(buf+data_offset,data_length)){
+      mime_type="image/gif";
+      extract_gif_params(buf+data_offset,data_length,
+       &width,&height,&depth,&colors,&has_palette);
+    }
+    else{
+      free(buf);
+      *error = OPE_INVALID_PICTURE;
       return NULL;
-    }
-    nbuf=data_offset;
-    /*Add a reasonable starting image file size.*/
-    cbuf=data_offset+65536;
-    for(;;){
-      unsigned char *new_buf;
-      size_t         nread;
-      new_buf=realloc(buf,cbuf);
-      if(new_buf==NULL){
-        fclose(picture_file);
-        free(buf);
-        *error = OPE_ALLOC_FAIL;
-        return NULL;
-      }
-      buf=new_buf;
-      nread=fread(buf+nbuf,1,cbuf-nbuf,picture_file);
-      nbuf+=nread;
-      if(nbuf<cbuf){
-        int file_error;
-        file_error=ferror(picture_file);
-        fclose(picture_file);
-        if(file_error){
-          free(buf);
-          *error = OPE_INVALID_PICTURE;
-          return NULL;
-        }
-        break;
-      }
-      if(cbuf==0xFFFFFFFF){
-        fclose(picture_file);
-        free(buf);
-        *error = OPE_INVALID_PICTURE;
-        return NULL;
-      }
-      else if(cbuf>0x7FFFFFFFU)cbuf=0xFFFFFFFFU;
-      else cbuf=cbuf<<1|1;
-    }
-    data_length=nbuf-data_offset;
-    /*Try to extract the image dimensions/color information from the file.*/
-    width=height=depth=colors=0;
-    has_palette=-1;
-    {
-      if(is_jpeg(buf+data_offset,data_length)){
-        mime_type="image/jpeg";
-        extract_jpeg_params(buf+data_offset,data_length,
-         &width,&height,&depth,&colors,&has_palette);
-      }
-      else if(is_png(buf+data_offset,data_length)){
-        mime_type="image/png";
-        extract_png_params(buf+data_offset,data_length,
-         &width,&height,&depth,&colors,&has_palette);
-      }
-      else if(is_gif(buf+data_offset,data_length)){
-        mime_type="image/gif";
-        extract_gif_params(buf+data_offset,data_length,
-         &width,&height,&depth,&colors,&has_palette);
-      }
-      else{
-        free(buf);
-        *error = OPE_INVALID_PICTURE;
-        return NULL;
-      }
     }
   }
   /*These fields MUST be set correctly OR all set to zero.

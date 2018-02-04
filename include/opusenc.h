@@ -264,7 +264,8 @@ OPE_EXPORT OggOpusEnc *ope_encoder_create_callbacks(const OpusEncCallbacks *call
     */
 OPE_EXPORT OggOpusEnc *ope_encoder_create_pull(OggOpusComments *comments, opus_int32 rate, int channels, int family, int *error);
 
-/** Deferred initialization of the encoder to force an explicit channel mapping.
+/** Deferred initialization of the encoder to force an explicit channel mapping. This can be used to override the default channel coupling,
+    but using it for regular surround will almost certainly lead to worse quality.
     \param[in,out] enc         Encoder
     \param family              Mapping family (0 for mono/stereo, 1 for surround)
     \param streams             Total number of streams

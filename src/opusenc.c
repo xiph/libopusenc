@@ -185,6 +185,7 @@ struct OggOpusEnc {
   opus_int64 write_granule;
   opus_int64 last_page_granule;
   int draining;
+  int frame_size_request;
   float *lpc_buffer;
   unsigned char *chaining_keyframe;
   int chaining_keyframe_length;
@@ -483,12 +484,13 @@ static void encode_buffer(OggOpusEnc *enc) {
       is_keyframe = 1;
     }
     /* Handle the last packet by making sure not to encode too much padding. */
-    if (enc->curr_granule+enc->frame_size >= end_granule48k && enc->draining) {
+    if (enc->curr_granule+enc->frame_size >= end_granule48k && enc->draining && enc->frame_size_request > OPUS_FRAMESIZE_20_MS) {
       int min_samples;
-      int frame_size_request = OPUS_FRAMESIZE_2_5_MS;
+      int frame_size_request = OPUS_FRAMESIZE_20_MS;
       /* Minimum frame size required for the current frame to still meet the e_o_s condition. */
       min_samples = end_granule48k - enc->curr_granule;
       while (compute_frame_samples(frame_size_request) < min_samples) frame_size_request++;
+      assert(frame_size_request <= enc->frame_size_request);
       ope_encoder_ctl(enc, OPUS_SET_EXPERT_FRAME_DURATION(frame_size_request));
     }
     packet = oggp_get_packet_buffer(enc->oggp, max_packet_size);
@@ -830,7 +832,10 @@ int ope_encoder_ctl(OggOpusEnc *enc, int request, ...) {
         break;
       }
       ret = opus_multistream_encoder_ctl(enc->st, request, value);
-      if (ret == OPUS_OK) enc->frame_size = compute_frame_samples(value);
+      if (ret == OPUS_OK) {
+        enc->frame_size = compute_frame_samples(value);
+        enc->frame_size_request = value;
+      }
     }
     break;
     case OPUS_GET_APPLICATION_REQUEST:

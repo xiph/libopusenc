@@ -209,7 +209,7 @@ OPE_EXPORT int ope_comments_add(OggOpusComments *comments, const char *tag, cons
  */
 OPE_EXPORT int ope_comments_add_string(OggOpusComments *comments, const char *tag_and_val);
 
-/** Add a picture. 
+/** Add a picture from a file. 
     \param[in,out] comments     Where to add the comments
     \param         filename     File name for the picture
     \param         picture_type Type of picture (-1 for default)
@@ -217,6 +217,16 @@ OPE_EXPORT int ope_comments_add_string(OggOpusComments *comments, const char *ta
     \return Error code
  */
 OPE_EXPORT int ope_comments_add_picture(OggOpusComments *comments, const char *filename, int picture_type, const char *description);
+
+/** Add a picture already in memory. 
+    \param[in,out] comments     Where to add the comments
+    \param         ptr          Pointer to picture in memory
+    \param         size         Size of picture pointed to by ptr
+    \param         picture_type Type of picture (-1 for default)
+    \param         description  Description (NULL means no comment)
+    \return Error code
+ */
+OPE_EXPORT int ope_comments_add_picture_from_memory(OggOpusComments *comments, const char *ptr, size_t size, int picture_type, const char *description);
 
 /*@}*/
 /*@}*/

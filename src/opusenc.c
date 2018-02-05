@@ -147,6 +147,18 @@ int ope_comments_add_picture(OggOpusComments *comments, const char *filename, in
   return OPE_OK;
 }
 
+int ope_comments_add_picture_from_memory(OggOpusComments *comments, const char *ptr, size_t size, int picture_type, const char *description) {
+  char *picture_data;
+  int err;
+  picture_data = _ope_parse_picture_specification_from_memory(ptr, size, picture_type, description, &err, &comments->seen_file_icons);
+  if (picture_data == NULL || err != OPE_OK){
+    return err;
+  }
+  _ope_comment_add(&comments->comment, &comments->comment_length, "METADATA_BLOCK_PICTURE", picture_data);
+  free(picture_data);
+  return OPE_OK;
+}
+
 
 typedef struct EncStream EncStream;
 

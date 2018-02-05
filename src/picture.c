@@ -342,7 +342,6 @@ static char *_ope_parse_picture_specification_impl(unsigned char *buf, size_t nb
        &width,&height,&depth,&colors,&has_palette);
     }
     else{
-      free(buf);
       *error = OPE_INVALID_PICTURE;
       return NULL;
     }
@@ -354,7 +353,6 @@ static char *_ope_parse_picture_specification_impl(unsigned char *buf, size_t nb
   if(picture_type==1&&(width!=32||height!=32
    ||strlen(mime_type)!=9
    ||oi_strncasecmp("image/png",mime_type,9)!=0)){
-    free(buf);
     *error = OPE_INVALID_ICON;
     return NULL;
   }
@@ -390,7 +388,6 @@ static char *_ope_parse_picture_specification_impl(unsigned char *buf, size_t nb
   } else {
     *error = OPE_ALLOC_FAIL;
   }
-  free(buf);
   return out;
 }
 
@@ -399,11 +396,39 @@ char *_ope_parse_picture_specification(const char *filename, int picture_type, c
   size_t nbuf;
   size_t data_offset;
   unsigned char *buf;
+  char *ret;
   if (picture_type < 0) picture_type=3;
   if (!validate_picture_type(picture_type, *seen_file_icons)) {
     *error = OPE_INVALID_PICTURE;
     return NULL;
   }
   buf = _ope_read_picture_file(filename, description, error, &nbuf, &data_offset);
-  return _ope_parse_picture_specification_impl(buf, nbuf, data_offset, picture_type, description, error, seen_file_icons);
+  if (buf == NULL) return NULL;
+  ret = _ope_parse_picture_specification_impl(buf, nbuf, data_offset, picture_type, description, error, seen_file_icons);
+  free(buf);
+  return ret;
+}
+
+char *_ope_parse_picture_specification_from_memory(const char *mem, size_t size, int picture_type, const char *description,
+                                  int *error, int *seen_file_icons){
+  size_t nbuf;
+  size_t data_offset;
+  unsigned char *buf;
+  char *ret;
+  if (picture_type < 0) picture_type=3;
+  if (!validate_picture_type(picture_type, *seen_file_icons)) {
+    *error = OPE_INVALID_PICTURE;
+    return NULL;
+  }
+  data_offset=32+strlen(description)+10;
+  nbuf = data_offset + size;
+  buf = (unsigned char *)malloc(nbuf);
+  if (buf == NULL) {
+    *error = OPE_ALLOC_FAIL;
+    return NULL;
+  }
+  memcpy(buf+data_offset, mem, size);
+  ret = _ope_parse_picture_specification_impl(buf, nbuf, data_offset, picture_type, description, error, seen_file_icons);
+  free(buf);
+  return ret;
 }

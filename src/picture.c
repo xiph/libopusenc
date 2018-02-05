@@ -290,6 +290,12 @@ static unsigned char *_ope_read_picture_file(const char *filename, const char *d
   return buf;
 }
 
+static int validate_picture_type(int picture_type, int seen_file_icons) {
+  if (picture_type > 20) return 0;
+  if(picture_type>=1&&picture_type<=2&&(seen_file_icons&picture_type)) return 0;
+  return 1;
+}
+
 /*Parse a picture SPECIFICATION as given on the command-line.
   spec: The specification.
   error_message: Returns an error message on error.
@@ -297,31 +303,23 @@ static unsigned char *_ope_read_picture_file(const char *filename, const char *d
    have already been added, to ensure only one is allowed.
   Return: A Base64-encoded string suitable for use in a METADATA_BLOCK_PICTURE
    tag.*/
-char *_ope_parse_picture_specification(const char *filename, int picture_type, const char *description,
+static char *_ope_parse_picture_specification_impl(unsigned char *buf, size_t nbuf, size_t data_offset, int picture_type, const char *description,
                                   int *error, int *seen_file_icons){
   opus_uint32  width;
   opus_uint32  height;
   opus_uint32  depth;
   opus_uint32  colors;
-  unsigned char *buf;
   const char    *mime_type;
   char          *out;
-  size_t         nbuf;
-  size_t         data_offset;
   size_t         data_length;
   size_t         b64_length;
   int          has_palette;
   *error = OPE_OK;
   if (picture_type < 0) picture_type=3;
-  if (picture_type > 20) {
-    *error=OPE_INVALID_PICTURE;
+  if (!validate_picture_type(picture_type, *seen_file_icons)) {
+    *error = OPE_INVALID_PICTURE;
     return NULL;
   }
-  if(picture_type>=1&&picture_type<=2&&(*seen_file_icons&picture_type)){
-    *error=OPE_INVALID_PICTURE;
-    return NULL;
-  }
-  buf = _ope_read_picture_file(filename, description, error, &nbuf, &data_offset);
   if (buf == NULL) return NULL;
   data_length=nbuf-data_offset;
   /*Try to extract the image dimensions/color information from the file.*/
@@ -394,4 +392,18 @@ char *_ope_parse_picture_specification(const char *filename, int picture_type, c
   }
   free(buf);
   return out;
+}
+
+char *_ope_parse_picture_specification(const char *filename, int picture_type, const char *description,
+                                  int *error, int *seen_file_icons){
+  size_t nbuf;
+  size_t data_offset;
+  unsigned char *buf;
+  if (picture_type < 0) picture_type=3;
+  if (!validate_picture_type(picture_type, *seen_file_icons)) {
+    *error = OPE_INVALID_PICTURE;
+    return NULL;
+  }
+  buf = _ope_read_picture_file(filename, description, error, &nbuf, &data_offset);
+  return _ope_parse_picture_specification_impl(buf, nbuf, data_offset, picture_type, description, error, seen_file_icons);
 }

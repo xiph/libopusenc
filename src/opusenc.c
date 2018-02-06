@@ -311,7 +311,8 @@ OggOpusEnc *ope_encoder_create_callbacks(const OpusEncCallbacks *callbacks, void
     if (error) *error = OPE_BAD_ARG;
     return NULL;
   }
-
+  /* Setting the most common failure up-front. */
+  if (error) *error = OPE_ALLOC_FAIL;
   if ( (enc = malloc(sizeof(*enc))) == NULL) goto fail;
   enc->buffer = NULL;
   enc->lpc_buffer = NULL;
@@ -339,6 +340,12 @@ OggOpusEnc *ope_encoder_create_callbacks(const OpusEncCallbacks *callbacks, void
         &enc->header.nb_streams, &enc->header.nb_coupled,
         enc->header.stream_map, OPUS_APPLICATION_AUDIO, &ret);
     if (! (ret == OPUS_OK && st != NULL) ) {
+      if (ret == OPUS_BAD_ARG) ret = OPE_BAD_ARG;
+      else if (ret == OPUS_INTERNAL_ERROR) ret = OPE_INTERNAL_ERROR;
+      else if (ret == OPUS_UNIMPLEMENTED) ret = OPE_UNIMPLEMENTED;
+      else if (ret == OPUS_ALLOC_FAIL) ret = OPE_ALLOC_FAIL;
+      else ret = OPE_INTERNAL_ERROR;
+      if (error) *error = ret;
       goto fail;
     }
     enc->st = st;
@@ -380,7 +387,6 @@ fail:
   if (st) {
     opus_multistream_encoder_destroy(st);
   }
-  if (error) *error = OPE_ALLOC_FAIL;
   return NULL;
 }
 
@@ -404,7 +410,12 @@ int ope_encoder_deferred_init_with_mapping(OggOpusEnc *enc, int family, int stre
   else if (streams <= 0 || streams>255 || coupled_streams<0 || coupled_streams >= 128 || streams+coupled_streams > 255) return OPE_BAD_ARG;
   st=opus_multistream_encoder_create(48000, enc->channels, streams, coupled_streams, mapping, OPUS_APPLICATION_AUDIO, &ret);
   if (! (ret == OPUS_OK && st != NULL) ) {
-    goto fail;
+    if (ret == OPUS_BAD_ARG) ret = OPE_BAD_ARG;
+    else if (ret == OPUS_INTERNAL_ERROR) ret = OPE_INTERNAL_ERROR;
+    else if (ret == OPUS_UNIMPLEMENTED) ret = OPE_UNIMPLEMENTED;
+    else if (ret == OPUS_ALLOC_FAIL) ret = OPE_ALLOC_FAIL;
+    else ret = OPE_INTERNAL_ERROR;
+    return ret;
   }
   enc->st = st;
   opus_multistream_encoder_ctl(st, OPUS_SET_EXPERT_FRAME_DURATION(OPUS_FRAMESIZE_20_MS));
@@ -415,8 +426,6 @@ int ope_encoder_deferred_init_with_mapping(OggOpusEnc *enc, int family, int stre
   for (i=0;i<streams+coupled_streams;i++)
     enc->header.stream_map[i] = mapping[i];
   return OPE_OK;
-fail:
-  return OPE_ALLOC_FAIL;
 }
 
 static void init_stream(OggOpusEnc *enc) {

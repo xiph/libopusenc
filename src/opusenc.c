@@ -406,7 +406,7 @@ int ope_encoder_deferred_init_with_mapping(OggOpusEnc *enc, int family, int stre
     return OPE_TOO_LATE;
   }
   if (family < 0 || family > 255) return OPE_BAD_ARG;
-  else if (family != 0 && family != 1 && family != 255) return OPE_UNIMPLEMENTED;
+  else if (family != 1 && family != 255) return OPE_UNIMPLEMENTED;
   else if (streams <= 0 || streams>255 || coupled_streams<0 || coupled_streams >= 128 || streams+coupled_streams > 255) return OPE_BAD_ARG;
   st=opus_multistream_encoder_create(48000, enc->channels, streams, coupled_streams, mapping, OPUS_APPLICATION_AUDIO, &ret);
   if (! (ret == OPUS_OK && st != NULL) ) {

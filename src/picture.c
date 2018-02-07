@@ -234,7 +234,6 @@ static unsigned char *_ope_read_picture_file(const char *filename, const char *d
   size_t         nbuf;
   size_t         data_offset;
   unsigned char *buf;
-  if (description == NULL) description = "";
   picture_file=_ope_fopen(filename,"rb");
   /*Buffer size: 8 static 4-byte fields plus 2 dynamic fields, plus the
      file/URL data.
@@ -402,6 +401,7 @@ char *_ope_parse_picture_specification(const char *filename, int picture_type, c
     *error = OPE_INVALID_PICTURE;
     return NULL;
   }
+  if (description == NULL) description = "";
   buf = _ope_read_picture_file(filename, description, error, &nbuf, &data_offset);
   if (buf == NULL) return NULL;
   ret = _ope_parse_picture_specification_impl(buf, nbuf, data_offset, picture_type, description, error, seen_file_icons);
@@ -420,6 +420,7 @@ char *_ope_parse_picture_specification_from_memory(const char *mem, size_t size,
     *error = OPE_INVALID_PICTURE;
     return NULL;
   }
+  if (description == NULL) description = "";
   data_offset=32+strlen(description)+10;
   nbuf = data_offset + size;
   buf = (unsigned char *)malloc(nbuf);

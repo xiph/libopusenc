@@ -229,7 +229,7 @@ static int stdio_write(void *user_data, const unsigned char *ptr, opus_int32 len
   int ret;
   struct StdioObject *obj = (struct StdioObject*)user_data;
   ret = fwrite(ptr, 1, len, obj->file) != (size_t)len;
-  return ret != len;
+  return ret;
 }
 
 static int stdio_close(void *user_data) {

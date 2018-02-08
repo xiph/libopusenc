@@ -157,7 +157,7 @@ typedef int (*ope_write_func)(void *user_data, const unsigned char *ptr, opus_in
 typedef int (*ope_close_func)(void *user_data);
 
 /** Called on every packet encoded (including header). */
-typedef int (*ope_packet_func)(void *user_data, const unsigned char *packet_ptr, opus_int32 packet_len, opus_uint32 flags);
+typedef void (*ope_packet_func)(void *user_data, const unsigned char *packet_ptr, opus_int32 packet_len, opus_uint32 flags);
 
 /** Callback functions for accessing the stream. */
 typedef struct {

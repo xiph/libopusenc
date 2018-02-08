@@ -150,13 +150,30 @@ extern "C" {
    These are the callbacks that can be implemented for an encoder.*/
 /*@{*/
 
-/** Called for writing a page. */
+/** Called for writing a page.
+ \param user_data user-defined data passed to the callback
+ \param ptr       buffer to be written
+ \param len       number of bytes to be written
+ \return          error code
+ \retval 0        success
+ \retval 1        failure
+ */
 typedef int (*ope_write_func)(void *user_data, const unsigned char *ptr, opus_int32 len);
 
-/** Called for closing a stream. */
+/** Called for closing a stream.
+ \param user_data user-defined data passed to the callback
+ \return          error code
+ \retval 0        success
+ \retval 1        failure
+ */
 typedef int (*ope_close_func)(void *user_data);
 
-/** Called on every packet encoded (including header). */
+/** Called on every packet encoded (including header).
+ \param user_data   user-defined data passed to the callback
+ \param packet_ptr  packet data
+ \param packet_len  number of bytes in the packet
+ \param flags       optional flags (none defined for now so zero)
+ */
 typedef void (*ope_packet_func)(void *user_data, const unsigned char *packet_ptr, opus_int32 packet_len, opus_uint32 flags);
 
 /** Callback functions for accessing the stream. */

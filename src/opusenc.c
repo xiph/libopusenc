@@ -1038,9 +1038,10 @@ const char *ope_strerror(int error) {
   static const char * const ope_error_strings[5] = {
     "cannot open file",
     "call cannot be made at this point",
-    "unrecoverable error",
     "invalid picture file",
     "invalid icon file (pictures of type 1 MUST be 32x32 PNGs)"
+    "write failed"
+    "close failed"
   };
   if (error == 0) return "success";
   else if (error >= -10) return "unknown error";

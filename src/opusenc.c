@@ -320,7 +320,7 @@ OggOpusEnc *ope_encoder_create_callbacks(const OpusEncCallbacks *callbacks, void
   enc->last_stream = enc->streams;
   enc->oggp = NULL;
   /* Not initializing anything is an unrecoverable error. */
-  enc->unrecoverable = family == -1;
+  enc->unrecoverable = family == -1 ? OPE_TOO_LATE : 0;
   enc->pull_api = 0;
   enc->packet_callback = NULL;
   enc->rate = rate;
@@ -438,7 +438,7 @@ static void init_stream(OggOpusEnc *enc) {
   else {
     enc->oggp = oggp_create(enc->streams->serialno);
     if (enc->oggp == NULL) {
-      enc->unrecoverable = 1;
+      enc->unrecoverable = OPE_ALLOC_FAIL;
       return;
     }
     oggp_set_muxing_delay(enc->oggp, enc->max_ogg_delay);
@@ -524,7 +524,7 @@ static void encode_buffer(OggOpusEnc *enc) {
         enc->buffer_end-enc->buffer_start, packet, max_packet_size);
     if (nbBytes < 0) {
       /* Anything better we can do here? */
-      enc->unrecoverable = 1;
+      enc->unrecoverable = OPE_INTERNAL_ERROR;
       return;
     }
     opus_multistream_encoder_ctl(enc->st, OPUS_SET_PREDICTION_DISABLED(pred));
@@ -545,7 +545,7 @@ static void encode_buffer(OggOpusEnc *enc) {
         packet_copy = malloc(nbBytes);
         if (packet_copy == NULL) {
           /* Can't recover from allocation failing here. */
-          enc->unrecoverable = 1;
+          enc->unrecoverable = OPE_ALLOC_FAIL;
           return;
         }
         memcpy(packet_copy, packet, nbBytes);
@@ -607,7 +607,7 @@ static void encode_buffer(OggOpusEnc *enc) {
 /* Add/encode any number of float samples to the file. */
 int ope_encoder_write_float(OggOpusEnc *enc, const float *pcm, int samples_per_channel) {
   int channels = enc->channels;
-  if (enc->unrecoverable) return OPE_UNRECOVERABLE;
+  if (enc->unrecoverable) return enc->unrecoverable;
   enc->last_stream->header_is_frozen = 1;
   if (!enc->streams->stream_is_init) init_stream(enc);
   if (samples_per_channel < 0) return OPE_BAD_ARG;
@@ -641,7 +641,7 @@ int ope_encoder_write_float(OggOpusEnc *enc, const float *pcm, int samples_per_c
     pcm += in_samples*channels;
     samples_per_channel -= in_samples;
     encode_buffer(enc);
-    if (enc->unrecoverable) return OPE_UNRECOVERABLE;
+    if (enc->unrecoverable) return enc->unrecoverable;
   } while (samples_per_channel > 0);
   return OPE_OK;
 }
@@ -651,7 +651,7 @@ int ope_encoder_write_float(OggOpusEnc *enc, const float *pcm, int samples_per_c
 /* Add/encode any number of int16 samples to the file. */
 int ope_encoder_write(OggOpusEnc *enc, const opus_int16 *pcm, int samples_per_channel) {
   int channels = enc->channels;
-  if (enc->unrecoverable) return OPE_UNRECOVERABLE;
+  if (enc->unrecoverable) return enc->unrecoverable;
   enc->last_stream->header_is_frozen = 1;
   if (!enc->streams->stream_is_init) init_stream(enc);
   if (samples_per_channel < 0) return OPE_BAD_ARG;
@@ -689,14 +689,14 @@ int ope_encoder_write(OggOpusEnc *enc, const opus_int16 *pcm, int samples_per_ch
     pcm += in_samples*channels;
     samples_per_channel -= in_samples;
     encode_buffer(enc);
-    if (enc->unrecoverable) return OPE_UNRECOVERABLE;
+    if (enc->unrecoverable) return enc->unrecoverable;
   } while (samples_per_channel > 0);
   return OPE_OK;
 }
 
 /* Get the next page from the stream. Returns 1 if there is a page available, 0 if not. */
 int ope_encoder_get_page(OggOpusEnc *enc, unsigned char **page, opus_int32 *len, int flush) {
-  if (enc->unrecoverable) return OPE_UNRECOVERABLE;
+  if (enc->unrecoverable) return enc->unrecoverable;
   if (!enc->pull_api) return 0;
   else {
     if (flush) oggp_flush_page(enc->oggp);
@@ -709,7 +709,7 @@ static void extend_signal(float *x, int before, int after, int channels);
 int ope_encoder_drain(OggOpusEnc *enc) {
   int pad_samples;
   int resampler_drain = 0;
-  if (enc->unrecoverable) return OPE_UNRECOVERABLE;
+  if (enc->unrecoverable) return enc->unrecoverable;
   /* Check if it's already been drained. */
   if (enc->streams == NULL) return OPE_TOO_LATE;
   if (enc->re) resampler_drain = speex_resampler_get_output_latency(enc->re);
@@ -738,7 +738,7 @@ int ope_encoder_drain(OggOpusEnc *enc) {
   enc->draining = 1;
   assert(enc->buffer_end <= BUFFER_SAMPLES);
   encode_buffer(enc);
-  if (enc->unrecoverable) return OPE_UNRECOVERABLE;
+  if (enc->unrecoverable) return enc->unrecoverable;
   /* Draining should have called all the streams to complete. */
   assert(enc->streams == NULL);
   return OPE_OK;
@@ -789,7 +789,7 @@ int ope_encoder_continue_new_file(OggOpusEnc *enc, const char *path, OggOpusComm
 /* Ends the stream and create a new file (callback-based). */
 int ope_encoder_continue_new_callbacks(OggOpusEnc *enc, void *user_data, OggOpusComments *comments) {
   EncStream *new_stream;
-  if (enc->unrecoverable) return OPE_UNRECOVERABLE;
+  if (enc->unrecoverable) return enc->unrecoverable;
   assert(enc->streams);
   assert(enc->last_stream);
   new_stream = stream_create(comments);
@@ -802,7 +802,7 @@ int ope_encoder_continue_new_callbacks(OggOpusEnc *enc, void *user_data, OggOpus
 }
 
 int ope_encoder_flush_header(OggOpusEnc *enc) {
-  if (enc->unrecoverable) return OPE_UNRECOVERABLE;
+  if (enc->unrecoverable) return enc->unrecoverable;
   if (enc->last_stream->header_is_frozen) return OPE_TOO_LATE;
   if (enc->last_stream->stream_is_init) return OPE_TOO_LATE;
   else init_stream(enc);
@@ -814,7 +814,7 @@ int ope_encoder_ctl(OggOpusEnc *enc, int request, ...) {
   int ret;
   int translate;
   va_list ap;
-  if (enc->unrecoverable) return OPE_UNRECOVERABLE;
+  if (enc->unrecoverable) return enc->unrecoverable;
   va_start(ap, request);
   ret = OPE_OK;
   switch (request) {

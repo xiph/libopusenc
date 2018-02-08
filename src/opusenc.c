@@ -210,21 +210,26 @@ struct OggOpusEnc {
   EncStream *last_stream;
 };
 
-static void output_pages(OggOpusEnc *enc) {
+static int output_pages(OggOpusEnc *enc) {
   unsigned char *page;
   int len;
   while (oggp_get_next_page(enc->oggp, &page, &len)) {
-    enc->callbacks.write(enc->streams->user_data, page, len);
+    int ret = enc->callbacks.write(enc->streams->user_data, page, len);
+    if (ret) return ret; 
   }
+  return 0;
 }
-static void oe_flush_page(OggOpusEnc *enc) {
+static int oe_flush_page(OggOpusEnc *enc) {
   oggp_flush_page(enc->oggp);
-  if (!enc->pull_api) output_pages(enc);
+  if (!enc->pull_api) return output_pages(enc);
+  return 0;
 }
 
 static int stdio_write(void *user_data, const unsigned char *ptr, opus_int32 len) {
+  int ret;
   struct StdioObject *obj = (struct StdioObject*)user_data;
-  return fwrite(ptr, 1, len, obj->file) != (size_t)len;
+  ret = fwrite(ptr, 1, len, obj->file) != (size_t)len;
+  return ret != len;
 }
 
 static int stdio_close(void *user_data) {
@@ -232,7 +237,7 @@ static int stdio_close(void *user_data) {
   int ret = 0;
   if (obj->file) ret = fclose(obj->file);
   free(obj);
-  return ret;
+  return ret!=0;
 }
 
 static const OpusEncCallbacks stdio_callbacks = {
@@ -456,18 +461,27 @@ static void init_stream(OggOpusEnc *enc) {
   }
   /*Write header*/
   {
+    int ret;
     int packet_size;
     unsigned char *p;
     p = oggp_get_packet_buffer(enc->oggp, 276);
     packet_size = _ope_opus_header_to_packet(&enc->header, p, 276);
     if (enc->packet_callback) enc->packet_callback(enc->packet_callback_data, p, packet_size, 0);
     oggp_commit_packet(enc->oggp, packet_size, 0, 0);
-    oe_flush_page(enc);
+    ret = oe_flush_page(enc);
+    if (ret) {
+      enc->unrecoverable = OPE_WRITE_FAIL;
+      return;
+    }
     p = oggp_get_packet_buffer(enc->oggp, enc->streams->comment_length);
     memcpy(p, enc->streams->comment, enc->streams->comment_length);
     if (enc->packet_callback) enc->packet_callback(enc->packet_callback_data, p, enc->streams->comment_length, 0);
     oggp_commit_packet(enc->oggp, enc->streams->comment_length, 0, 0);
-    oe_flush_page(enc);
+    ret = oe_flush_page(enc);
+    if (ret) {
+      enc->unrecoverable = OPE_WRITE_FAIL;
+      return;
+    }
   }
   enc->streams->stream_is_init = 1;
   enc->streams->packetno = 2;
@@ -531,6 +545,7 @@ static void encode_buffer(OggOpusEnc *enc) {
     assert(nbBytes > 0);
     enc->curr_granule += enc->frame_size;
     do {
+      int ret;
       opus_int64 granulepos;
       granulepos=enc->curr_granule-enc->streams->granule_offset;
       e_o_s=enc->curr_granule >= end_granule48k;
@@ -551,12 +566,22 @@ static void encode_buffer(OggOpusEnc *enc) {
         memcpy(packet_copy, packet, nbBytes);
       }
       oggp_commit_packet(enc->oggp, nbBytes, granulepos, e_o_s);
-      if (e_o_s) oe_flush_page(enc);
-      else if (!enc->pull_api) output_pages(enc);
+      if (e_o_s) ret = oe_flush_page(enc);
+      else if (!enc->pull_api) ret = output_pages(enc);
+      if (ret) {
+        enc->unrecoverable = OPE_WRITE_FAIL;
+        return;
+      }
       if (e_o_s) {
         EncStream *tmp;
         tmp = enc->streams->next;
-        if (enc->streams->close_at_end && !enc->pull_api) enc->callbacks.close(enc->streams->user_data);
+        if (enc->streams->close_at_end && !enc->pull_api) {
+          ret = enc->callbacks.close(enc->streams->user_data);
+          if (ret) {
+            enc->unrecoverable = OPE_CLOSE_FAIL;
+            return;
+          }
+        }
         stream_destroy(enc->streams);
         enc->streams = tmp;
         if (!tmp) enc->last_stream = NULL;
@@ -750,7 +775,13 @@ void ope_encoder_destroy(OggOpusEnc *enc) {
   while (stream != NULL) {
     EncStream *tmp = stream;
     stream = stream->next;
-    if (tmp->close_at_end) enc->callbacks.close(tmp->user_data);
+    if (tmp->close_at_end) {
+      int ret = enc->callbacks.close(tmp->user_data);
+      if (ret) {
+        enc->unrecoverable = OPE_CLOSE_FAIL;
+        return;
+      }
+    }
     stream_destroy(tmp);
   }
   if (enc->chaining_keyframe) free(enc->chaining_keyframe);

@@ -97,6 +97,9 @@ extern "C" {
 #define OPE_TOO_LATE -31
 #define OPE_INVALID_PICTURE -32
 #define OPE_INVALID_ICON -33
+#define OPE_WRITE_FAIL -34
+#define OPE_CLOSE_FAIL -35
+
 /*@}*/
 /*@}*/
 

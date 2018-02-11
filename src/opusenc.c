@@ -1019,7 +1019,7 @@ int ope_encoder_ctl(OggOpusEnc *enc, int request, ...) {
     }
     break;
     default:
-      ret = OPE_UNIMPLEMENTED;
+      ret = OPUS_UNIMPLEMENTED;
   }
   va_end(ap);
   translate = ret != 0 && (request < 14000 || (ret < 0 && ret >= -10));

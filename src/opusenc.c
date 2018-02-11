@@ -1035,12 +1035,12 @@ int ope_encoder_ctl(OggOpusEnc *enc, int request, ...) {
 }
 
 const char *ope_strerror(int error) {
-  static const char * const ope_error_strings[5] = {
+  static const char * const ope_error_strings[] = {
     "cannot open file",
     "call cannot be made at this point",
     "invalid picture file",
-    "invalid icon file (pictures of type 1 MUST be 32x32 PNGs)"
-    "write failed"
+    "invalid icon file (pictures of type 1 MUST be 32x32 PNGs)",
+    "write failed",
     "close failed"
   };
   if (error == 0) return "success";

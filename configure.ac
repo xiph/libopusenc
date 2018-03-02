@@ -152,11 +152,11 @@ AC_MSG_NOTICE([
 ------------------------------------------------------------------------
   $PACKAGE_NAME $PACKAGE_VERSION: Automatic configuration OK.
 
-    Assertions ................... ${enable_assertions}
-
-    Fixed-point .................. ${enable_fixed_point}
-    Floating-point API ........... ${enable_float}${lrintf_notice}
-
+dnl    Assertions ................... ${enable_assertions}
+dnl
+dnl    Fixed-point .................. ${enable_fixed_point}
+dnl    Floating-point API ........... ${enable_float}${lrintf_notice}
+dnl
     Hidden visibility ............ ${cc_cv_flag_visibility}
 
     API code examples ............ ${enable_examples}

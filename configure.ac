@@ -65,9 +65,9 @@ case $host in
 esac
 AM_CONDITIONAL(OP_WIN32, test "$host_mingw" = "true")
 
-AC_ARG_ENABLE([assertions],
-  AS_HELP_STRING([--enable-assertions], [Enable assertions in code]),,
-  enable_assertions=no)
+dnl AC_ARG_ENABLE([assertions],
+dnl   AS_HELP_STRING([--enable-assertions], [Enable assertions in code]),,
+dnl   enable_assertions=no)
 
 AS_IF([test "$enable_assertions" = "yes"], [
   AC_DEFINE([OP_ENABLE_ASSERTIONS], [1], [Enable assertions in code])
@@ -80,20 +80,20 @@ variable ACLOCAL="aclocal -I/path/to/pkg.m4".])])
 
 PKG_CHECK_MODULES([DEPS], [opus >= 1.1])
 
-AC_ARG_ENABLE([fixed-point],
-  AS_HELP_STRING([--enable-fixed-point], [Enable fixed-point calculation]),,
-  enable_fixed_point=no)
-AC_ARG_ENABLE([float],
-  AS_HELP_STRING([--disable-float], [Disable floating-point API]),,
-  enable_float=yes)
+dnl AC_ARG_ENABLE([fixed-point],
+dnl   AS_HELP_STRING([--enable-fixed-point], [Enable fixed-point calculation]),,
+dnl   enable_fixed_point=no)
+dnl AC_ARG_ENABLE([float],
+dnl   AS_HELP_STRING([--disable-float], [Disable floating-point API]),,
+dnl   enable_float=yes)
 
 AC_DEFINE([RESAMPLE_FULL_SINC_TABLE], [1], [Faster, takes more memory])
 
-AS_IF([test "$enable_float" = "no"],
-  [enable_fixed_point=yes
-   AC_DEFINE([OP_DISABLE_FLOAT_API], [1], [Disable floating-point API])
-  ]
-)
+dnl AS_IF([test "$enable_float" = "no"],
+dnl   [enable_fixed_point=yes
+dnl    AC_DEFINE([OP_DISABLE_FLOAT_API], [1], [Disable floating-point API])
+dnl   ]
+dnl )
 
 AS_IF([test "$enable_fixed_point" = "yes"],
   [AC_DEFINE([OP_FIXED_POINT], [1], [Enable fixed-point calculation])],

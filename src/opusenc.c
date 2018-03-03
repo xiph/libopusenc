@@ -1018,6 +1018,18 @@ int ope_encoder_ctl(OggOpusEnc *enc, int request, ...) {
       *value = enc->header.gain;
     }
     break;
+    case OPE_GET_NB_STREAMS_REQUEST:
+    {
+      opus_int32 *value = va_arg(ap, opus_int32*);
+      *value = enc->header.nb_streams;
+    }
+    break;
+    case OPE_GET_NB_COUPLED_STREAMS_REQUEST:
+    {
+      opus_int32 *value = va_arg(ap, opus_int32*);
+      *value = enc->header.nb_coupled;
+    }
+    break;
     default:
       ret = OPUS_UNIMPLEMENTED;
   }

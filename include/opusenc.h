@@ -117,6 +117,8 @@ extern "C" {
 /*#define OPE_GET_PACKET_CALLBACK_REQUEST     14009*/
 #define OPE_SET_HEADER_GAIN_REQUEST         14010
 #define OPE_GET_HEADER_GAIN_REQUEST         14011
+#define OPE_GET_NB_STREAMS_REQUEST          14013
+#define OPE_GET_NB_COUPLED_STREAMS_REQUEST  14015
 
 /**\defgroup encoder_ctl Encoding Options*/
 /*@{*/
@@ -139,6 +141,8 @@ extern "C" {
 /*#define OPE_GET_PACKET_CALLBACK(x,u) OPE_GET_PACKET_CALLBACK_REQUEST, (x), (u)*/
 #define OPE_SET_HEADER_GAIN(x) OPE_SET_HEADER_GAIN_REQUEST, __opus_check_int(x)
 #define OPE_GET_HEADER_GAIN(x) OPE_GET_HEADER_GAIN_REQUEST, __opus_check_int_ptr(x)
+#define OPE_GET_NB_STREAMS(x) OPE_GET_NB_STREAMS_REQUEST, __opus_check_int_ptr(x)
+#define OPE_GET_NB_COUPLED_STREAMS(x) OPE_GET_NB_COUPLED_STREAMS_REQUEST, __opus_check_int_ptr(x)
 /*@}*/
 /*@}*/
 

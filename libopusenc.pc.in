@@ -6,7 +6,8 @@ libdir=@libdir@
 includedir=@includedir@
 
 Name: libopusenc
-Description: High-level Opus decoding library
+Description: High-level Opus encoding library
+URL: https://opus-codec.org/
 Version: @PACKAGE_VERSION@
 Requires.private: opus >= 1.1
 Conflicts:

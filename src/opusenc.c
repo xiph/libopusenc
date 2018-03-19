@@ -36,7 +36,6 @@
 #include <stdio.h>
 #include <string.h>
 #include <assert.h>
-#include <opus_multistream.h>
 #include "opusenc.h"
 #include "opus_header.h"
 #include "speex_resampler.h"
@@ -178,8 +177,75 @@ struct EncStream {
   EncStream *next;
 };
 
+int opeint_use_projection(int channel_mapping) {
+  if (channel_mapping==253){
+    return 1;
+  }
+  return 0;
+}
+
+int opeint_encoder_surround_init(
+    OpusGenericEncoder *st, int Fs, int channels, int channel_mapping,
+    int *nb_streams, int *nb_coupled, unsigned char *stream_map, int application) {
+  int ret;
+#ifdef OPUS_HAVE_OPUS_PROJECTION_H
+  if(opeint_use_projection(channel_mapping)){
+    int ci;
+    st->pr=opus_projection_ambisonics_encoder_create(Fs, channels,
+        channel_mapping, nb_streams, nb_coupled, application, &ret);
+    for (ci = 0; ci < channels; ci++) {
+      stream_map[ci] = ci;
+    }
+    st->ms=NULL;
+  }
+  else
+#endif
+  {
+#ifdef OPUS_HAVE_OPUS_PROJECTION_H
+    st->pr=NULL;
+#endif
+    st->ms=opus_multistream_surround_encoder_create(Fs, channels,
+        channel_mapping, nb_streams, nb_coupled, stream_map, application, &ret);
+  }
+  return ret;
+}
+
+void opeint_encoder_cleanup(OpusGenericEncoder *st) {
+#ifdef OPUS_HAVE_OPUS_PROJECTION_H
+    if (st->pr) opus_projection_encoder_destroy(st->pr);
+#endif
+    if (st->ms) opus_multistream_encoder_destroy(st->ms);
+}
+
+int opeint_encoder_init(
+    OpusGenericEncoder *st, opus_int32 Fs, int channels, int streams,
+    int coupled_streams, const unsigned char *mapping, int application) {
+  int ret;
+#ifdef OPUS_HAVE_OPUS_PROJECTION_H
+  st->pr=NULL;
+#endif
+  st->ms=opus_multistream_encoder_create(Fs, channels, streams,
+      coupled_streams, mapping, application, &ret);
+  return ret;
+}
+
+int opeint_encode_float(
+    OpusGenericEncoder *st,
+    const float *pcm,
+    int frame_size,
+    unsigned char *data,
+    opus_int32 max_data_bytes) {
+  int ret;
+#ifdef OPUS_HAVE_OPUS_PROJECTION_H
+  if (st->pr) ret=opus_projection_encode_float(st->pr, pcm, frame_size, data, max_data_bytes);
+  else
+#endif
+    ret=opus_multistream_encode_float(st->ms, pcm, frame_size, data, max_data_bytes);
+  return ret;
+}
+
 struct OggOpusEnc {
-  OpusMSEncoder *st;
+  OpusGenericEncoder st;
   oggpacker *oggp;
   int unrecoverable;
   int pull_api;
@@ -215,7 +281,7 @@ static int output_pages(OggOpusEnc *enc) {
   int len;
   while (oggp_get_next_page(enc->oggp, &page, &len)) {
     int ret = enc->callbacks.write(enc->streams->user_data, page, len);
-    if (ret) return ret; 
+    if (ret) return ret;
   }
   return 0;
 }
@@ -298,10 +364,13 @@ static void stream_destroy(EncStream *stream) {
 /* Create a new OggOpus file (callback-based). */
 OggOpusEnc *ope_encoder_create_callbacks(const OpusEncCallbacks *callbacks, void *user_data,
     OggOpusComments *comments, opus_int32 rate, int channels, int family, int *error) {
-  OpusMSEncoder *st=NULL;
   OggOpusEnc *enc=NULL;
   int ret;
-  if (family != 0 && family != 1 && family != 255 && family != -1) {
+  if (family != 0 && family != 1 &&
+#ifdef OPUS_HAVE_OPUS_PROJECTION_H
+      family != 253 && family != 254 &&
+#endif
+      family != 255 && family != -1) {
     if (error) {
       if (family < -1 || family > 255) *error = OPE_BAD_ARG;
       else *error = OPE_UNIMPLEMENTED;
@@ -341,10 +410,11 @@ OggOpusEnc *ope_encoder_create_callbacks(const OpusEncCallbacks *callbacks, void
   enc->header.input_sample_rate=rate;
   enc->header.gain=0;
   if (family != -1) {
-    st=opus_multistream_surround_encoder_create(48000, channels, enc->header.channel_mapping,
-        &enc->header.nb_streams, &enc->header.nb_coupled,
-        enc->header.stream_map, OPUS_APPLICATION_AUDIO, &ret);
-    if (! (ret == OPUS_OK && st != NULL) ) {
+    ret=opeint_encoder_surround_init(&enc->st, 48000, channels,
+        enc->header.channel_mapping, &enc->header.nb_streams,
+        &enc->header.nb_coupled, enc->header.stream_map,
+        OPUS_APPLICATION_AUDIO);
+    if (! (ret == OPUS_OK) ) {
       if (ret == OPUS_BAD_ARG) ret = OPE_BAD_ARG;
       else if (ret == OPUS_INTERNAL_ERROR) ret = OPE_INTERNAL_ERROR;
       else if (ret == OPUS_UNIMPLEMENTED) ret = OPE_UNIMPLEMENTED;
@@ -353,8 +423,7 @@ OggOpusEnc *ope_encoder_create_callbacks(const OpusEncCallbacks *callbacks, void
       if (error) *error = ret;
       goto fail;
     }
-    enc->st = st;
-    opus_multistream_encoder_ctl(st, OPUS_SET_EXPERT_FRAME_DURATION(OPUS_FRAMESIZE_20_MS));
+    opeint_encoder_ctl(&enc->st, OPUS_SET_EXPERT_FRAME_DURATION(OPUS_FRAMESIZE_20_MS));
   }
   if (rate != 48000) {
     enc->re = speex_resampler_init(channels, rate, 48000, 5, NULL);
@@ -384,13 +453,11 @@ OggOpusEnc *ope_encoder_create_callbacks(const OpusEncCallbacks *callbacks, void
   return enc;
 fail:
   if (enc) {
+    opeint_encoder_cleanup(&enc->st);
     if (enc->buffer) free(enc->buffer);
     if (enc->streams) stream_destroy(enc->streams);
     if (enc->lpc_buffer) free(enc->lpc_buffer);
     free(enc);
-  }
-  if (st) {
-    opus_multistream_encoder_destroy(st);
   }
   return NULL;
 }
@@ -402,19 +469,19 @@ OggOpusEnc *ope_encoder_create_pull(OggOpusComments *comments, opus_int32 rate, 
   return enc;
 }
 
-int ope_encoder_deferred_init_with_mapping(OggOpusEnc *enc, int family, int streams, 
+int ope_encoder_deferred_init_with_mapping(OggOpusEnc *enc, int family, int streams,
     int coupled_streams, const unsigned char *mapping) {
   int ret;
   int i;
-  OpusMSEncoder *st;
-  if (enc->st!=NULL) {
-    return OPE_TOO_LATE;
-  }
   if (family < 0 || family > 255) return OPE_BAD_ARG;
-  else if (family != 1 && family != 255) return OPE_UNIMPLEMENTED;
+  else if (family != 1 &&
+  #ifdef OPUS_HAVE_OPUS_PROJECTION_H
+      family != 254 &&
+  #endif
+      family != 255) return OPE_UNIMPLEMENTED;
   else if (streams <= 0 || streams>255 || coupled_streams<0 || coupled_streams >= 128 || streams+coupled_streams > 255) return OPE_BAD_ARG;
-  st=opus_multistream_encoder_create(48000, enc->channels, streams, coupled_streams, mapping, OPUS_APPLICATION_AUDIO, &ret);
-  if (! (ret == OPUS_OK && st != NULL) ) {
+  ret=opeint_encoder_init(&enc->st, 48000, enc->channels, streams, coupled_streams, mapping, OPUS_APPLICATION_AUDIO);
+  if (! (ret == OPUS_OK) ) {
     if (ret == OPUS_BAD_ARG) ret = OPE_BAD_ARG;
     else if (ret == OPUS_INTERNAL_ERROR) ret = OPE_INTERNAL_ERROR;
     else if (ret == OPUS_UNIMPLEMENTED) ret = OPE_UNIMPLEMENTED;
@@ -422,8 +489,7 @@ int ope_encoder_deferred_init_with_mapping(OggOpusEnc *enc, int family, int stre
     else ret = OPE_INTERNAL_ERROR;
     return ret;
   }
-  enc->st = st;
-  opus_multistream_encoder_ctl(st, OPUS_SET_EXPERT_FRAME_DURATION(OPUS_FRAMESIZE_20_MS));
+  opeint_encoder_ctl(&enc->st, OPUS_SET_EXPERT_FRAME_DURATION(OPUS_FRAMESIZE_20_MS));
   enc->unrecoverable = 0;
   enc->header.channel_mapping=family;
   enc->header.nb_streams = streams;
@@ -454,18 +520,20 @@ static void init_stream(OggOpusEnc *enc) {
   if (enc->global_granule_offset == -1) {
     opus_int32 tmp;
     int ret;
-    ret = opus_multistream_encoder_ctl(enc->st, OPUS_GET_LOOKAHEAD(&tmp));
+    ret=opeint_encoder_ctl(&enc->st, OPUS_GET_LOOKAHEAD(&tmp));
     if (ret == OPUS_OK) enc->header.preskip = tmp;
     else enc->header.preskip = 0;
     enc->global_granule_offset = enc->header.preskip;
   }
   /*Write header*/
   {
+    int header_size;
     int ret;
     int packet_size;
     unsigned char *p;
-    p = oggp_get_packet_buffer(enc->oggp, 276);
-    packet_size = _ope_opus_header_to_packet(&enc->header, p, 276);
+    header_size = _ope_opus_header_get_size(&enc->header);
+    p = oggp_get_packet_buffer(enc->oggp, header_size);
+    packet_size = _ope_opus_header_to_packet(&enc->header, p, header_size, &enc->st);
     if (enc->packet_callback) enc->packet_callback(enc->packet_callback_data, p, packet_size, 0);
     oggp_commit_packet(enc->oggp, packet_size, 0, 0);
     ret = oe_flush_page(enc);
@@ -516,11 +584,11 @@ static void encode_buffer(OggOpusEnc *enc) {
     unsigned char *packet_copy = NULL;
     int is_keyframe=0;
     if (enc->unrecoverable) return;
-    opus_multistream_encoder_ctl(enc->st, OPUS_GET_PREDICTION_DISABLED(&pred));
+    opeint_encoder_ctl(&enc->st, OPUS_GET_PREDICTION_DISABLED(&pred));
     /* FIXME: a frame that follows a keyframe generally doesn't need to be a keyframe
        unless there's two consecutive stream boundaries. */
     if (enc->curr_granule + 2*enc->frame_size>= end_granule48k && enc->streams->next) {
-      opus_multistream_encoder_ctl(enc->st, OPUS_SET_PREDICTION_DISABLED(1));
+      opeint_encoder_ctl(&enc->st, OPUS_SET_PREDICTION_DISABLED(1));
       is_keyframe = 1;
     }
     /* Handle the last packet by making sure not to encode too much padding. */
@@ -534,14 +602,14 @@ static void encode_buffer(OggOpusEnc *enc) {
       ope_encoder_ctl(enc, OPUS_SET_EXPERT_FRAME_DURATION(frame_size_request));
     }
     packet = oggp_get_packet_buffer(enc->oggp, max_packet_size);
-    nbBytes = opus_multistream_encode_float(enc->st, &enc->buffer[enc->channels*enc->buffer_start],
+    nbBytes = opeint_encode_float(&enc->st, &enc->buffer[enc->channels*enc->buffer_start],
         enc->buffer_end-enc->buffer_start, packet, max_packet_size);
     if (nbBytes < 0) {
       /* Anything better we can do here? */
       enc->unrecoverable = OPE_INTERNAL_ERROR;
       return;
     }
-    opus_multistream_encoder_ctl(enc->st, OPUS_SET_PREDICTION_DISABLED(pred));
+    opeint_encoder_ctl(&enc->st, OPUS_SET_PREDICTION_DISABLED(pred));
     assert(nbBytes > 0);
     enc->curr_granule += enc->frame_size;
     do {
@@ -782,7 +850,7 @@ void ope_encoder_destroy(OggOpusEnc *enc) {
   if (enc->chaining_keyframe) free(enc->chaining_keyframe);
   free(enc->buffer);
   if (enc->oggp) oggp_destroy(enc->oggp);
-  if (enc->st) opus_multistream_encoder_destroy(enc->st);
+  opeint_encoder_cleanup(&enc->st);
   if (enc->re) speex_resampler_destroy(enc->re);
   if (enc->lpc_buffer) free(enc->lpc_buffer);
   free(enc);
@@ -863,13 +931,13 @@ int ope_encoder_ctl(OggOpusEnc *enc, int request, ...) {
 #endif
     {
       opus_int32 value = va_arg(ap, opus_int32);
-      ret = opus_multistream_encoder_ctl(enc->st, request, value);
+      ret = opeint_encoder_ctl2(&enc->st, request, value);
     }
     break;
     case OPUS_GET_LOOKAHEAD_REQUEST:
     {
       opus_int32 *value = va_arg(ap, opus_int32*);
-      ret = opus_multistream_encoder_ctl(enc->st, request, value);
+      ret = opeint_encoder_ctl(&enc->st, OPUS_GET_LOOKAHEAD(value));
     }
     break;
     case OPUS_SET_EXPERT_FRAME_DURATION_REQUEST:
@@ -883,7 +951,7 @@ int ope_encoder_ctl(OggOpusEnc *enc, int request, ...) {
         ret = OPUS_UNIMPLEMENTED;
         break;
       }
-      ret = opus_multistream_encoder_ctl(enc->st, request, value);
+      ret = opeint_encoder_ctl(&enc->st, OPUS_SET_EXPERT_FRAME_DURATION(value));
       if (ret == OPUS_OK) {
         enc->frame_size = compute_frame_samples(value);
         enc->frame_size_request = value;
@@ -909,7 +977,7 @@ int ope_encoder_ctl(OggOpusEnc *enc, int request, ...) {
 #endif
     {
       opus_int32 *value = va_arg(ap, opus_int32*);
-      ret = opus_multistream_encoder_ctl(enc->st, request, value);
+      ret = opeint_encoder_ctl2(&enc->st, request, value);
     }
     break;
     case OPUS_MULTISTREAM_GET_ENCODER_STATE_REQUEST:
@@ -918,7 +986,7 @@ int ope_encoder_ctl(OggOpusEnc *enc, int request, ...) {
       OpusEncoder **value;
       stream_id = va_arg(ap, opus_int32);
       value = va_arg(ap, OpusEncoder**);
-      ret = opus_multistream_encoder_ctl(enc->st, request, stream_id, value);
+      opeint_encoder_ctl(&enc->st, OPUS_MULTISTREAM_GET_ENCODER_STATE(stream_id, value));
     }
     break;
 

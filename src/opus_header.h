@@ -31,6 +31,45 @@
 #include <stdlib.h>
 #include <opus.h>
 
+#include <opus_multistream.h>
+#ifdef OPUS_HAVE_OPUS_PROJECTION_H
+#include <opus_projection.h>
+#endif
+
+typedef struct OpusGenericEncoder OpusGenericEncoder;
+struct OpusGenericEncoder {
+  OpusMSEncoder *ms;
+#ifdef OPUS_HAVE_OPUS_PROJECTION_H
+  OpusProjectionEncoder *pr;
+#endif
+};
+
+int opeint_use_projection(int channel_mapping);
+
+int opeint_encoder_surround_init(OpusGenericEncoder *st, int Fs, int channels, int channel_mapping, int *nb_streams, int *nb_coupled, unsigned char *stream_map, int application);
+
+void opeint_encoder_cleanup(OpusGenericEncoder *st);
+
+int opeint_encoder_init(OpusGenericEncoder *st, opus_int32 Fs, int channels, int streams, int coupled_streams, const unsigned char *mapping, int application);
+
+int opeint_encode_float(OpusGenericEncoder *st, const float *pcm, int frame_size, unsigned char *data, opus_int32 max_data_bytes);
+
+#ifdef OPUS_HAVE_OPUS_PROJECTION_H
+# define opeint_encoder_ctl(st, request) \
+    ((st)->pr!=NULL ? \
+    opus_projection_encoder_ctl((st)->pr, request) : \
+    opus_multistream_encoder_ctl((st)->ms, request))
+# define opeint_encoder_ctl2(st, request, value) \
+    ((st)->pr!=NULL ? \
+    opus_projection_encoder_ctl((st)->pr, request, value) : \
+    opus_multistream_encoder_ctl((st)->ms, request, value))
+#else
+# define opeint_encoder_ctl(st, request) \
+    opus_multistream_encoder_ctl((st)->ms, request)
+# define opeint_encoder_ctl2(st, request, value) \
+    opus_multistream_encoder_ctl((st)->ms, request, value)
+#endif
+
 typedef struct {
    int version;
    int channels; /* Number of channels: 1..255 */
@@ -44,7 +83,9 @@ typedef struct {
    unsigned char stream_map[255];
 } OpusHeader;
 
-int _ope_opus_header_to_packet(const OpusHeader *h, unsigned char *packet, int len);
+int _ope_opus_header_get_size(const OpusHeader *h);
+
+int _ope_opus_header_to_packet(const OpusHeader *h, unsigned char *packet, int len, const OpusGenericEncoder *st);
 
 void _ope_comment_init(char **comments, int* length, const char *vendor_string);
 

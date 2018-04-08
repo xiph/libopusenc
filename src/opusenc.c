@@ -636,8 +636,10 @@ static void encode_buffer(OggOpusEnc *enc) {
       oggp_commit_packet(enc->oggp, nbBytes, granulepos, e_o_s);
       if (e_o_s) ret = oe_flush_page(enc);
       else if (!enc->pull_api) ret = output_pages(enc);
+      else ret = 0;
       if (ret) {
         enc->unrecoverable = OPE_WRITE_FAIL;
+        if (packet_copy) free(packet_copy);
         return;
       }
       if (e_o_s) {
@@ -647,6 +649,7 @@ static void encode_buffer(OggOpusEnc *enc) {
           ret = enc->callbacks.close(enc->streams->user_data);
           if (ret) {
             enc->unrecoverable = OPE_CLOSE_FAIL;
+            free(packet_copy);
             return;
           }
         }
@@ -654,7 +657,7 @@ static void encode_buffer(OggOpusEnc *enc) {
         enc->streams = tmp;
         if (!tmp) enc->last_stream = NULL;
         if (enc->last_stream == NULL) {
-          if (packet_copy) free(packet_copy);
+          free(packet_copy);
           return;
         }
         /* We're done with this stream, start the next one. */

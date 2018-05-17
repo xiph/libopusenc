@@ -54,6 +54,7 @@
 extern "C" {
 # endif
 
+#include <stddef.h>
 #include <opus.h>
 
 #ifndef OPE_EXPORT

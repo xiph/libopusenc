@@ -178,7 +178,7 @@ struct EncStream {
 };
 
 int opeint_use_projection(int channel_mapping) {
-  if (channel_mapping==253){
+  if (channel_mapping==3){
     return 1;
   }
   return 0;
@@ -368,7 +368,7 @@ OggOpusEnc *ope_encoder_create_callbacks(const OpusEncCallbacks *callbacks, void
   int ret;
   if (family != 0 && family != 1 &&
 #ifdef OPUS_HAVE_OPUS_PROJECTION_H
-      family != 253 && family != 254 &&
+      family != 2 && family != 3 &&
 #endif
       family != 255 && family != -1) {
     if (error) {
@@ -476,7 +476,7 @@ int ope_encoder_deferred_init_with_mapping(OggOpusEnc *enc, int family, int stre
   if (family < 0 || family > 255) return OPE_BAD_ARG;
   else if (family != 1 &&
   #ifdef OPUS_HAVE_OPUS_PROJECTION_H
-      family != 254 &&
+      family != 2 &&
   #endif
       family != 255) return OPE_UNIMPLEMENTED;
   else if (streams <= 0 || streams>255 || coupled_streams<0 || coupled_streams >= 128 || streams+coupled_streams > 255) return OPE_BAD_ARG;

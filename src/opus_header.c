@@ -41,7 +41,8 @@
   - Sampling rate (32 bits)
   - Gain in dB (16 bits, S7.8)
   - Mapping (8 bits, 0=single stream (mono/stereo) 1=Vorbis mapping,
-             2..254: reserved, 255: multistream with no mapping)
+             2=ambisonics, 3=projection ambisonics, 4..239: reserved,
+             240..254: experiments, 255: multistream with no mapping)
 
   - if (mapping != 0)
      - N = total number of streams (8 bits)

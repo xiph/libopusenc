@@ -41,7 +41,7 @@
 #ifdef FLOATING_POINT
 #error You cannot compile as floating point and fixed point at the same time
 #endif
-#ifdef _USE_SSE
+#ifdef USE_SSE
 #error SSE is only for floating-point
 #endif
 #if ((defined (ARM4_ASM)||defined (ARM4_ASM)) && defined(BFIN_ASM)) || (defined (ARM4_ASM)&&defined(ARM5E_ASM))
@@ -205,8 +205,8 @@ typedef float spx_word32_t;
 #define DIV32(a,b)     (((spx_word32_t)(a))/(spx_word32_t)(b))
 #define PDIV32(a,b)     (((spx_word32_t)(a))/(spx_word32_t)(b))
 
-#define WORD2INT(x) ((x) < -32767.5f ? -32768 : ((x) > 32766.5f ? 32767 : floor(.5+(x))))
-
+#define WORD2INT(x) ((x) < -32767.5f ? -32768 : \
+                    ((x) > 32766.5f ? 32767 : (spx_int16_t)floor(.5 + (x))))
 #endif
 
 

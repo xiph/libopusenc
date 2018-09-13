@@ -1,8 +1,8 @@
 #ifndef CONFIG_H
 #define CONFIG_H
 
-/* Enable fixed-point calculation */
-/* #undef OP_FIXED_POINT */
+/* use faster resampler (uses more memory) */
+#define RESAMPLE_FULL_SINC_TABLE 1
 
 #define OPE_BUILD
 

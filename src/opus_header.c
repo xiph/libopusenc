@@ -67,12 +67,6 @@ typedef struct {
    int pos;
 } Packet;
 
-typedef struct {
-   const unsigned char *data;
-   int maxlen;
-   int pos;
-} ROPacket;
-
 static int write_uint32(Packet *p, opus_uint32 val)
 {
    if (p->pos>p->maxlen-4)

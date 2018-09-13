@@ -56,9 +56,6 @@
     <ClInclude Include="..\..\src\speex_resampler.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="..\..\src\stack_alloc.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
     <ClInclude Include="..\..\src\unicode_support.h">
       <Filter>Header Files</Filter>
     </ClInclude>

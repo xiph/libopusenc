@@ -1,6 +1,6 @@
 ACLOCAL_AMFLAGS = -I m4
 
-DEFS += -DSPX_RESAMPLE_EXPORT= -DRANDOM_PREFIX=libopusenc -DOUTSIDE_SPEEX -DFLOATING_POINT
+DEFS += -DRANDOM_PREFIX=libopusenc -DOUTSIDE_SPEEX
 
 AM_CFLAGS = -I$(top_srcdir)/include $(DEPS_CFLAGS)
 
@@ -16,7 +16,6 @@ noinst_HEADERS = src/arch.h \
 		 src/picture.h \
 		 src/resample_sse.h \
 		 src/speex_resampler.h \
-		 src/stack_alloc.h \
 		 src/unicode_support.h
 
 libopusenc_la_SOURCES = \

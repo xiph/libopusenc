@@ -325,12 +325,9 @@ int oggp_flush_page(oggpacker *oggp) {
       /* Making sure we don't need to do that too often. */
       newsize = 1 + oggp->pages_size*3/2;
       newbuf = realloc(oggp->pages, newsize*sizeof(oggp_page));
-      if (newbuf != NULL) {
-        oggp->pages = newbuf;
-        oggp->pages_size = newsize;
-      } else {
-        assert(0);
-      }
+      assert(newbuf != NULL);
+      oggp->pages = newbuf;
+      oggp->pages_size = newsize;
     }
     p = &oggp->pages[oggp->pages_fill++];
     p->granulepos = oggp->curr_granule;

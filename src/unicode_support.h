@@ -34,6 +34,6 @@
 
 #define WIN_UNICODE 1
 
-FILE *_ope_fopen(const char *filename_utf8, const char *mode_utf8);
+FILE *opeint_fopen(const char *filename_utf8, const char *mode_utf8);
 
 #endif

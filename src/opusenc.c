@@ -87,7 +87,7 @@ OggOpusComments *ope_comments_create() {
   if (c == NULL) return NULL;
   libopus_str = opus_get_version_string();
   snprintf(vendor_str, sizeof(vendor_str), "%s, %s %s", libopus_str, PACKAGE_NAME, PACKAGE_VERSION);
-  _ope_comment_init(&c->comment, &c->comment_length, vendor_str);
+  opeint_comment_init(&c->comment, &c->comment_length, vendor_str);
   c->seen_file_icons = 0;
   if (c->comment == NULL) {
     free(c);
@@ -123,25 +123,25 @@ void ope_comments_destroy(OggOpusComments *comments){
 int ope_comments_add(OggOpusComments *comments, const char *tag, const char *val) {
   if (tag == NULL || val == NULL) return OPE_BAD_ARG;
   if (strchr(tag, '=')) return OPE_BAD_ARG;
-  if (_ope_comment_add(&comments->comment, &comments->comment_length, tag, val)) return OPE_ALLOC_FAIL;
+  if (opeint_comment_add(&comments->comment, &comments->comment_length, tag, val)) return OPE_ALLOC_FAIL;
   return OPE_OK;
 }
 
 /* Add a comment. */
 int ope_comments_add_string(OggOpusComments *comments, const char *tag_and_val) {
   if (!strchr(tag_and_val, '=')) return OPE_BAD_ARG;
-  if (_ope_comment_add(&comments->comment, &comments->comment_length, NULL, tag_and_val)) return OPE_ALLOC_FAIL;
+  if (opeint_comment_add(&comments->comment, &comments->comment_length, NULL, tag_and_val)) return OPE_ALLOC_FAIL;
   return OPE_OK;
 }
 
 int ope_comments_add_picture(OggOpusComments *comments, const char *filename, int picture_type, const char *description) {
   char *picture_data;
   int err;
-  picture_data = _ope_parse_picture_specification(filename, picture_type, description, &err, &comments->seen_file_icons);
+  picture_data = opeint_parse_picture_specification(filename, picture_type, description, &err, &comments->seen_file_icons);
   if (picture_data == NULL || err != OPE_OK){
     return err;
   }
-  _ope_comment_add(&comments->comment, &comments->comment_length, "METADATA_BLOCK_PICTURE", picture_data);
+  opeint_comment_add(&comments->comment, &comments->comment_length, "METADATA_BLOCK_PICTURE", picture_data);
   free(picture_data);
   return OPE_OK;
 }
@@ -149,11 +149,11 @@ int ope_comments_add_picture(OggOpusComments *comments, const char *filename, in
 int ope_comments_add_picture_from_memory(OggOpusComments *comments, const char *ptr, size_t size, int picture_type, const char *description) {
   char *picture_data;
   int err;
-  picture_data = _ope_parse_picture_specification_from_memory(ptr, size, picture_type, description, &err, &comments->seen_file_icons);
+  picture_data = opeint_parse_picture_specification_from_memory(ptr, size, picture_type, description, &err, &comments->seen_file_icons);
   if (picture_data == NULL || err != OPE_OK){
     return err;
   }
-  _ope_comment_add(&comments->comment, &comments->comment_length, "METADATA_BLOCK_PICTURE", picture_data);
+  opeint_comment_add(&comments->comment, &comments->comment_length, "METADATA_BLOCK_PICTURE", picture_data);
   free(picture_data);
   return OPE_OK;
 }
@@ -325,7 +325,7 @@ OggOpusEnc *ope_encoder_create_file(const char *path, OggOpusComments *comments,
     free(obj);
     return NULL;
   }
-  obj->file = _ope_fopen(path, "wb");
+  obj->file = opeint_fopen(path, "wb");
   if (!obj->file) {
     if (error) *error = OPE_CANNOT_OPEN;
     ope_encoder_destroy(enc);
@@ -514,7 +514,7 @@ static void init_stream(OggOpusEnc *enc) {
     }
     oggp_set_muxing_delay(enc->oggp, enc->max_ogg_delay);
   }
-  _ope_comment_pad(&enc->streams->comment, &enc->streams->comment_length, enc->comment_padding);
+  opeint_comment_pad(&enc->streams->comment, &enc->streams->comment_length, enc->comment_padding);
 
   /* Get preskip at the last minute (when it can no longer change). */
   if (enc->global_granule_offset == -1) {
@@ -531,9 +531,9 @@ static void init_stream(OggOpusEnc *enc) {
     int ret;
     int packet_size;
     unsigned char *p;
-    header_size = _ope_opus_header_get_size(&enc->header);
+    header_size = opeint_opus_header_get_size(&enc->header);
     p = oggp_get_packet_buffer(enc->oggp, header_size);
-    packet_size = _ope_opus_header_to_packet(&enc->header, p, header_size, &enc->st);
+    packet_size = opeint_opus_header_to_packet(&enc->header, p, header_size, &enc->st);
     if (enc->packet_callback) enc->packet_callback(enc->packet_callback_data, p, packet_size, 0);
     oggp_commit_packet(enc->oggp, packet_size, 0, 0);
     ret = oe_flush_page(enc);
@@ -870,7 +870,7 @@ int ope_encoder_continue_new_file(OggOpusEnc *enc, const char *path, OggOpusComm
   int ret;
   struct StdioObject *obj;
   if (!(obj = malloc(sizeof(*obj)))) return OPE_ALLOC_FAIL;
-  obj->file = _ope_fopen(path, "wb");
+  obj->file = opeint_fopen(path, "wb");
   if (!obj->file) {
     free(obj);
     /* By trying to open the file first, we can recover if we can't open it. */

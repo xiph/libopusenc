@@ -83,14 +83,14 @@ typedef struct {
    unsigned char stream_map[255];
 } OpusHeader;
 
-int _ope_opus_header_get_size(const OpusHeader *h);
+int opeint_opus_header_get_size(const OpusHeader *h);
 
-int _ope_opus_header_to_packet(const OpusHeader *h, unsigned char *packet, int len, const OpusGenericEncoder *st);
+int opeint_opus_header_to_packet(const OpusHeader *h, unsigned char *packet, int len, const OpusGenericEncoder *st);
 
-void _ope_comment_init(char **comments, int* length, const char *vendor_string);
+void opeint_comment_init(char **comments, int* length, const char *vendor_string);
 
-int _ope_comment_add(char **comments, int* length, const char *tag, const char *val);
+int opeint_comment_add(char **comments, int* length, const char *tag, const char *val);
 
-void _ope_comment_pad(char **comments, int* length, int amount);
+void opeint_comment_pad(char **comments, int* length, int amount);
 
 #endif

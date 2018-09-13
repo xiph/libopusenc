@@ -25,8 +25,8 @@
    SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
 
-#ifndef __PICTURE_H
-#define __PICTURE_H
+#ifndef PICTURE_H
+#define PICTURE_H
 
 #include <opus.h>
 #include "opusenc.h"
@@ -39,10 +39,10 @@ typedef enum{
 
 #define BASE64_LENGTH(len) (((len)+2)/3*4)
 
-char *_ope_parse_picture_specification(const char *filename, int picture_type, const char *description,
+char *opeint_parse_picture_specification(const char *filename, int picture_type, const char *description,
                                   int *error, int *seen_file_icons);
 
-char *_ope_parse_picture_specification_from_memory(const char *mem, size_t size, int picture_type, const char *description,
+char *opeint_parse_picture_specification_from_memory(const char *mem, size_t size, int picture_type, const char *description,
                                   int *error, int *seen_file_icons);
 
 #define WRITE_U32_BE(buf, val) \
@@ -54,4 +54,4 @@ char *_ope_parse_picture_specification_from_memory(const char *mem, size_t size,
   } \
   while(0);
 
-#endif /* __PICTURE_H */
+#endif /* PICTURE_H */

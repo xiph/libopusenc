@@ -118,7 +118,7 @@ static int write_matrix_chars(Packet *p, const OpusGenericEncoder *st)
 #endif
 }
 
-int _ope_opus_header_get_size(const OpusHeader *h)
+int opeint_opus_header_get_size(const OpusHeader *h)
 {
   int len=0;
   if (opeint_use_projection(h->channel_mapping))
@@ -141,7 +141,7 @@ int _ope_opus_header_get_size(const OpusHeader *h)
   return len;
 }
 
-int _ope_opus_header_to_packet(const OpusHeader *h, unsigned char *packet, int len, const OpusGenericEncoder *st)
+int opeint_opus_header_to_packet(const OpusHeader *h, unsigned char *packet, int len, const OpusGenericEncoder *st)
 {
    int i;
    Packet p;
@@ -248,7 +248,7 @@ The comment header is decoded as follows:
                                      buf[base]=(val)&0xff; \
                                  }while(0)
 
-void _ope_comment_init(char **comments, int* length, const char *vendor_string)
+void opeint_comment_init(char **comments, int* length, const char *vendor_string)
 {
   /*The 'vendor' field should be the actual encoding library used.*/
   int vendor_length=strlen(vendor_string);
@@ -267,7 +267,7 @@ void _ope_comment_init(char **comments, int* length, const char *vendor_string)
   *comments=p;
 }
 
-int _ope_comment_add(char **comments, int* length, const char *tag, const char *val)
+int opeint_comment_add(char **comments, int* length, const char *tag, const char *val)
 {
   char* p=*comments;
   int vendor_length=readint(p, 8);
@@ -291,7 +291,7 @@ int _ope_comment_add(char **comments, int* length, const char *tag, const char *
   return 0;
 }
 
-void _ope_comment_pad(char **comments, int* length, int amount)
+void opeint_comment_pad(char **comments, int* length, int amount)
 {
   if(amount>0){
     int i;

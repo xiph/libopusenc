@@ -24,8 +24,8 @@
    SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
 
-#if !defined(_opusenc_h)
-# define _opusenc_h (1)
+#ifndef OPUSENC_H
+# define OPUSENC_H
 
 /**\mainpage
    \section Introduction

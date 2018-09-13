@@ -228,13 +228,13 @@ static void extract_jpeg_params(const unsigned char *data, size_t data_length,
 
 #define IMAX(a,b) ((a) > (b) ? (a) : (b))
 
-static unsigned char *_ope_read_picture_file(const char *filename, const char *description, int *error, size_t *size, size_t *offset) {
+static unsigned char *opeint_read_picture_file(const char *filename, const char *description, int *error, size_t *size, size_t *offset) {
   FILE          *picture_file;
   size_t         cbuf;
   size_t         nbuf;
   size_t         data_offset;
   unsigned char *buf;
-  picture_file=_ope_fopen(filename,"rb");
+  picture_file=opeint_fopen(filename,"rb");
   /*Buffer size: 8 static 4-byte fields plus 2 dynamic fields, plus the
      file/URL data.
     We reserve at least 10 bytes for the media type, in case we still need to
@@ -302,7 +302,7 @@ static int validate_picture_type(int picture_type, int seen_file_icons) {
    have already been added, to ensure only one is allowed.
   Return: A Base64-encoded string suitable for use in a METADATA_BLOCK_PICTURE
    tag.*/
-static char *_ope_parse_picture_specification_impl(unsigned char *buf, size_t nbuf, size_t data_offset, int picture_type, const char *description,
+static char *opeint_parse_picture_specification_impl(unsigned char *buf, size_t nbuf, size_t data_offset, int picture_type, const char *description,
                                   int *error, int *seen_file_icons){
   opus_uint32  width;
   opus_uint32  height;
@@ -390,7 +390,7 @@ static char *_ope_parse_picture_specification_impl(unsigned char *buf, size_t nb
   return out;
 }
 
-char *_ope_parse_picture_specification(const char *filename, int picture_type, const char *description,
+char *opeint_parse_picture_specification(const char *filename, int picture_type, const char *description,
                                   int *error, int *seen_file_icons){
   size_t nbuf;
   size_t data_offset;
@@ -402,14 +402,14 @@ char *_ope_parse_picture_specification(const char *filename, int picture_type, c
     return NULL;
   }
   if (description == NULL) description = "";
-  buf = _ope_read_picture_file(filename, description, error, &nbuf, &data_offset);
+  buf = opeint_read_picture_file(filename, description, error, &nbuf, &data_offset);
   if (buf == NULL) return NULL;
-  ret = _ope_parse_picture_specification_impl(buf, nbuf, data_offset, picture_type, description, error, seen_file_icons);
+  ret = opeint_parse_picture_specification_impl(buf, nbuf, data_offset, picture_type, description, error, seen_file_icons);
   free(buf);
   return ret;
 }
 
-char *_ope_parse_picture_specification_from_memory(const char *mem, size_t size, int picture_type, const char *description,
+char *opeint_parse_picture_specification_from_memory(const char *mem, size_t size, int picture_type, const char *description,
                                   int *error, int *seen_file_icons){
   size_t nbuf;
   size_t data_offset;
@@ -429,7 +429,7 @@ char *_ope_parse_picture_specification_from_memory(const char *mem, size_t size,
     return NULL;
   }
   memcpy(buf+data_offset, mem, size);
-  ret = _ope_parse_picture_specification_impl(buf, nbuf, data_offset, picture_type, description, error, seen_file_icons);
+  ret = opeint_parse_picture_specification_impl(buf, nbuf, data_offset, picture_type, description, error, seen_file_icons);
   free(buf);
   return ret;
 }

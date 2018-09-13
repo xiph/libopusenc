@@ -50,7 +50,7 @@ static wchar_t *utf8_to_utf16(const char *input)
 	return ((Result > 0) && (Result <= BuffSize)) ? Buffer : NULL;
 }
 
-FILE *_ope_fopen(const char *filename_utf8, const char *mode_utf8)
+FILE *opeint_fopen(const char *filename_utf8, const char *mode_utf8)
 {
 	FILE *ret = NULL;
 	wchar_t *filename_utf16 = utf8_to_utf16(filename_utf8);
@@ -71,7 +71,7 @@ FILE *_ope_fopen(const char *filename_utf8, const char *mode_utf8)
 
 #include <stdio.h>
 
-FILE *_ope_fopen(const char *filename_utf8, const char *mode_utf8) {
+FILE *opeint_fopen(const char *filename_utf8, const char *mode_utf8) {
   return fopen(filename_utf8, mode_utf8);
 }
 

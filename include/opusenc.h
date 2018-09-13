@@ -205,7 +205,7 @@ typedef struct OggOpusEnc OggOpusEnc;
    These functions make it possible to add comments and pictures to Ogg Opus files.*/
 /*@{*/
 
-/** Create a new comments object. 
+/** Create a new comments object.
     \return Newly-created comments object. */
 OPE_EXPORT OggOpusComments *ope_comments_create(void);
 
@@ -214,11 +214,11 @@ OPE_EXPORT OggOpusComments *ope_comments_create(void);
     \return Deep copy of input. */
 OPE_EXPORT OggOpusComments *ope_comments_copy(OggOpusComments *comments);
 
-/** Destroys a comments object. 
+/** Destroys a comments object.
     \param comments Comments object to destroy*/
 OPE_EXPORT void ope_comments_destroy(OggOpusComments *comments);
 
-/** Add a comment. 
+/** Add a comment.
     \param[in,out] comments Where to add the comments
     \param         tag      Tag for the comment (must not contain = char)
     \param         val      Value for the tag
@@ -226,14 +226,14 @@ OPE_EXPORT void ope_comments_destroy(OggOpusComments *comments);
  */
 OPE_EXPORT int ope_comments_add(OggOpusComments *comments, const char *tag, const char *val);
 
-/** Add a comment as a single tag=value string. 
+/** Add a comment as a single tag=value string.
     \param[in,out] comments    Where to add the comments
     \param         tag_and_val string of the form tag=value (must contain = char)
     \return Error code
  */
 OPE_EXPORT int ope_comments_add_string(OggOpusComments *comments, const char *tag_and_val);
 
-/** Add a picture from a file. 
+/** Add a picture from a file.
     \param[in,out] comments     Where to add the comments
     \param         filename     File name for the picture
     \param         picture_type Type of picture (-1 for default)
@@ -242,7 +242,7 @@ OPE_EXPORT int ope_comments_add_string(OggOpusComments *comments, const char *ta
  */
 OPE_EXPORT int ope_comments_add_picture(OggOpusComments *comments, const char *filename, int picture_type, const char *description);
 
-/** Add a picture already in memory. 
+/** Add a picture already in memory.
     \param[in,out] comments     Where to add the comments
     \param         ptr          Pointer to picture in memory
     \param         size         Size of picture pointed to by ptr
@@ -307,7 +307,7 @@ OPE_EXPORT OggOpusEnc *ope_encoder_create_pull(OggOpusComments *comments, opus_i
     \param mapping             Channel mapping
     \return Error code
  */
-OPE_EXPORT int ope_encoder_deferred_init_with_mapping(OggOpusEnc *enc, int family, int streams, 
+OPE_EXPORT int ope_encoder_deferred_init_with_mapping(OggOpusEnc *enc, int family, int streams,
     int coupled_streams, const unsigned char *mapping);
 
 /** Add/encode any number of float samples to the stream.

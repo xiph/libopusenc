@@ -22,7 +22,8 @@ int main(int argc, char **argv) {
   ope_comments_add(comments, "TITLE", "Some track");
   enc = ope_encoder_create_file(argv[2], comments, 44100, 2, 0, &error);
   if (!enc) {
-    fprintf(stderr, "cannout open output file: %s\n", argv[2]);
+    fprintf(stderr, "error encoding to file %s: %s\n", argv[2], ope_strerror(error));
+    ope_comments_destroy(comments);
     fclose(fin);
     return 1;
   }

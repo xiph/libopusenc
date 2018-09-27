@@ -713,7 +713,7 @@ int ope_encoder_write_float(OggOpusEnc *enc, const float *pcm, int samples_per_c
     int i;
     if (samples_per_channel < LPC_INPUT) {
       for (i=0;i<(LPC_INPUT-samples_per_channel)*channels;i++) enc->lpc_buffer[i] = enc->lpc_buffer[samples_per_channel*channels + i];
-      for (i=0;i<samples_per_channel*channels;i++) enc->lpc_buffer[(LPC_INPUT-samples_per_channel)*channels] = pcm[i];
+      for (i=0;i<samples_per_channel*channels;i++) enc->lpc_buffer[(LPC_INPUT-samples_per_channel)*channels + i] = pcm[i];
     } else {
       for (i=0;i<LPC_INPUT*channels;i++) enc->lpc_buffer[i] = pcm[(samples_per_channel-LPC_INPUT)*channels + i];
     }

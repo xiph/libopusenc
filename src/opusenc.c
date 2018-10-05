@@ -847,7 +847,7 @@ void ope_encoder_destroy(OggOpusEnc *enc) {
     EncStream *tmp = stream;
     stream = stream->next;
     /* Ignore any error on close. */
-    if (tmp->close_at_end) enc->callbacks.close(tmp->user_data);
+    if (tmp->close_at_end && tmp->user_data) enc->callbacks.close(tmp->user_data);
     stream_destroy(tmp);
   }
   if (enc->chaining_keyframe) free(enc->chaining_keyframe);

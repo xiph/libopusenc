@@ -1,4 +1,6 @@
-*.swp
+.s[a-w][a-z]
+.*.s[a-w][a-z]
+Session.vim
 *~
 
 *.exe

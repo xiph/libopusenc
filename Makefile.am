@@ -69,7 +69,7 @@ install-docs:
 	  ( cd doc && \
 	    echo "Installing documentation in $(DESTDIR)$(docdir)"; \
 	    $(INSTALL) -d $(DESTDIR)$(docdir)/html/search; \
-	    for f in `find html -type f \! -name "installdox"` ; do \
+	    for f in `find html -type f \! -name "installdox" -a \! -name '*.md5'` ; do \
 	      $(INSTALL_DATA) $$f $(DESTDIR)$(docdir)/$$f;     \
 	    done ) \
 	fi

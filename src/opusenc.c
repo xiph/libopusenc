@@ -361,8 +361,7 @@ static void stream_destroy(EncStream *stream) {
   free(stream);
 }
 
-/* Create a new OggOpus file (callback-based). */
-OggOpusEnc *ope_encoder_create_callbacks(const OpusEncCallbacks *callbacks, void *user_data,
+static OggOpusEnc *ope_encoder_create_callbacks_impl(const OpusEncCallbacks *callbacks, void *user_data,
     OggOpusComments *comments, opus_int32 rate, int channels, int family, int *error) {
   OggOpusEnc *enc=NULL;
   int ret;
@@ -395,11 +394,11 @@ OggOpusEnc *ope_encoder_create_callbacks(const OpusEncCallbacks *callbacks, void
   enc->oggp = NULL;
   /* Not initializing anything is an unrecoverable error. */
   enc->unrecoverable = family == -1 ? OPE_TOO_LATE : 0;
-  enc->pull_api = 0;
   enc->packet_callback = NULL;
   enc->rate = rate;
   enc->channels = channels;
   enc->frame_size = 960;
+  enc->frame_size_request = OPUS_FRAMESIZE_20_MS;
   enc->decision_delay = 96000;
   enc->max_ogg_delay = 48000;
   enc->chaining_keyframe = NULL;
@@ -447,8 +446,12 @@ OggOpusEnc *ope_encoder_create_callbacks(const OpusEncCallbacks *callbacks, void
   if (callbacks != NULL)
   {
     enc->callbacks = *callbacks;
+    enc->pull_api = 0;
+  } else {
+    enc->pull_api = 1;
   }
   enc->streams->user_data = user_data;
+  enc->streams->end_granule = 0;
   if (error) *error = OPE_OK;
   return enc;
 fail:
@@ -462,11 +465,19 @@ fail:
   return NULL;
 }
 
+/* Create a new OggOpus stream (callback-based). */
+OggOpusEnc *ope_encoder_create_callbacks(const OpusEncCallbacks *callbacks, void *user_data,
+    OggOpusComments *comments, opus_int32 rate, int channels, int family, int *error) {
+  if (callbacks == NULL) {
+    if (error) *error = OPE_BAD_ARG;
+    return NULL;
+  }
+  return ope_encoder_create_callbacks_impl(callbacks, user_data, comments, rate, channels, family, error);
+}
+
 /* Create a new OggOpus stream, pulling one page at a time. */
 OggOpusEnc *ope_encoder_create_pull(OggOpusComments *comments, opus_int32 rate, int channels, int family, int *error) {
-  OggOpusEnc *enc = ope_encoder_create_callbacks(NULL, NULL, comments, rate, channels, family, error);
-  if (enc) enc->pull_api = 1;
-  return enc;
+  return ope_encoder_create_callbacks_impl(NULL, NULL, comments, rate, channels, family, error);
 }
 
 int ope_encoder_deferred_init_with_mapping(OggOpusEnc *enc, int family, int streams,

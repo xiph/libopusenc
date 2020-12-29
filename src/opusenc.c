@@ -356,6 +356,11 @@ fail:
   return NULL;
 }
 
+static void stream_generate_serialno(EncStream *stream) {
+  stream->serialno = rand();
+  stream->serialno_is_set = 1;
+}
+
 static void stream_destroy(EncStream *stream) {
   if (stream->comment) free(stream->comment);
   free(stream);
@@ -512,9 +517,7 @@ int ope_encoder_deferred_init_with_mapping(OggOpusEnc *enc, int family, int stre
 
 static void init_stream(OggOpusEnc *enc) {
   assert(!enc->streams->stream_is_init);
-  if (!enc->streams->serialno_is_set) {
-    enc->streams->serialno = rand();
-  }
+  if (!enc->streams->serialno_is_set) stream_generate_serialno(enc->streams);
 
   if (enc->oggp != NULL) oggp_chain(enc->oggp, enc->streams->serialno);
   else {
@@ -1071,6 +1074,11 @@ int ope_encoder_ctl(OggOpusEnc *enc, int request, ...) {
     case OPE_GET_SERIALNO_REQUEST:
     {
       opus_int32 *value = va_arg(ap, opus_int32*);
+      if (!enc->last_stream) {
+        ret = OPE_TOO_LATE;
+        break;
+      }
+      if (!enc->last_stream->serialno_is_set) stream_generate_serialno(enc->last_stream);
       *value = enc->last_stream->serialno;
     }
     break;

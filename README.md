@@ -7,7 +7,7 @@ encoding .opus files. libopusenc depends only on libopus.
 
 The library is in very early development.
 Please give feedback
-in #opus on irc.freenode.net or at opus@xiph.org.
+in #opus on irc.libera.chat or at opus@xiph.org.
 
 Programming documentation is available in tree and online at
 https://opus-codec.org/docs/

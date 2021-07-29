@@ -1,7 +1,5 @@
 # Libopusenc
 
-[![Travis Build Status](https://travis-ci.org/xiph/libopusenc.svg?branch=master)](https://travis-ci.org/xiph/libopusenc)
-
 The libopusenc libraries provide a high-level API for
 encoding .opus files. libopusenc depends only on libopus.
 

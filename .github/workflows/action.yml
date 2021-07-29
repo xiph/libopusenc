@@ -1,0 +1,55 @@
+name: GitHub CI
+
+on:
+  push:
+  pull_request:
+  schedule:
+    - cron: '0 0 1 * *'
+
+jobs:
+  build:
+    strategy:
+      matrix:
+        name:
+          [
+            ubuntu-latest-autotools,
+            macos-latest-autotools,
+          ]
+        include:
+
+          - name: ubuntu-latest-autotools
+            os: ubuntu-latest
+            build-system: autotools
+
+          - name: macos-latest-autotools
+            os: macos-latest
+            build-system: autotools
+
+    runs-on: ${{ matrix.os }}
+
+    steps:
+      - uses: actions/checkout@v2
+
+      - name: Install Linux dependencies
+        if: startsWith(matrix.os,'ubuntu')
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libopus-dev zip doxygen graphviz
+
+      - name: Install MacOS dependencies
+        if: startsWith(matrix.os,'macos')
+        run: |
+          brew install pkg-config opus
+
+      - name: Build with Autotools
+        if: startsWith(matrix.build-system,'autotools')
+        run: |
+          ./autogen.sh
+          ./configure
+          make
+          make check
+
+      - name: distcheck with Autotools
+        if: startsWith(matrix.build-system,'autotools')
+        run: |
+          make distcheck

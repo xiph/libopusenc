@@ -79,7 +79,7 @@ struct OggOpusComments {
 };
 
 /* Create a new comments object. The vendor string is optional. */
-OggOpusComments *ope_comments_create() {
+OggOpusComments *ope_comments_create(void) {
   OggOpusComments *c;
   const char *libopus_str;
   char vendor_str[1024];

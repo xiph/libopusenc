@@ -1,16 +1,19 @@
 default:
   tags:
     - docker
-  # Image from https://hub.docker.com/_/gcc/ based on Debian
-  image: gcc:9
+  image: alpine
 
 autoconf:
+
   stage: build
+
   before_script:
-    - apt-get update &&
-      apt-get install -y libopus-dev zip doxygen graphviz
+    - apk update &&
+      apk add autoconf automake doxygen gcc git graphviz gzip make musl-dev libtool opus-dev xz zip
+
   script:
     - ./autogen.sh
-    - ./configure
-    - make
+    - ./configure || cat config.log
+    - make check
     - make distcheck
+    - . ./package_version && test $PACKAGE_VERSION != "unknown"

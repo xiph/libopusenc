@@ -29,7 +29,7 @@ int main(int argc, char **argv) {
   }
   while (1) {
     short buf[2*READ_SIZE];
-    int ret = fread(buf, 2*sizeof(short), READ_SIZE, fin);
+    int ret = fread(buf, sizeof(short), 2*READ_SIZE, fin);
     if (ret > 0) {
       ope_encoder_write(enc, buf, ret);
     } else break;

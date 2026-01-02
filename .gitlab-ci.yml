@@ -9,7 +9,7 @@ autoconf:
 
   before_script:
     - apk update &&
-      apk add autoconf automake doxygen gcc git graphviz gzip make musl-dev libtool opus-dev xz zip
+      apk add autoconf automake doxygen gcc git graphviz gzip make musl-dev libtool opus-dev tar xz zip
 
   script:
     - ./autogen.sh

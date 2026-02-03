@@ -946,6 +946,9 @@ int ope_encoder_ctl(OggOpusEnc *enc, int request, ...) {
 #ifdef OPUS_SET_PHASE_INVERSION_DISABLED_REQUEST
     case OPUS_SET_PHASE_INVERSION_DISABLED_REQUEST:
 #endif
+#ifdef OPUS_SET_QEXT_REQUEST
+    case OPUS_SET_QEXT_REQUEST:
+#endif
     {
       opus_int32 value = va_arg(ap, opus_int32);
       ret = opeint_encoder_ctl2(&enc->st, request, value);
@@ -991,6 +994,9 @@ int ope_encoder_ctl(OggOpusEnc *enc, int request, ...) {
     case OPUS_GET_PREDICTION_DISABLED_REQUEST:
 #ifdef OPUS_GET_PHASE_INVERSION_DISABLED_REQUEST
     case OPUS_GET_PHASE_INVERSION_DISABLED_REQUEST:
+#endif
+#ifdef OPUS_GET_QEXT_REQUEST
+    case OPUS_GET_QEXT_REQUEST:
 #endif
     {
       opus_int32 *value = va_arg(ap, opus_int32*);

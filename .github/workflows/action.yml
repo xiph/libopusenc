@@ -39,7 +39,7 @@ jobs:
       - name: Install MacOS dependencies
         if: startsWith(matrix.os,'macos')
         run: |
-          brew install pkg-config automake opus
+          brew install pkg-config automake libtool opus
 
       - name: Build with Autotools
         if: startsWith(matrix.build-system,'autotools')

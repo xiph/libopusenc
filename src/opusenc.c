@@ -954,6 +954,14 @@ int ope_encoder_ctl(OggOpusEnc *enc, int request, ...) {
       ret = opeint_encoder_ctl2(&enc->st, request, value);
     }
     break;
+#ifdef OPUS_SET_DRED_DURATION_REQUEST
+    case OPUS_SET_DRED_DURATION_REQUEST:
+    {
+      opus_int32 value = va_arg(ap, opus_int32);
+      ret = opeint_encoder_ctl2(&enc->st, OPUS_SET_DRED_DURATION_REQUEST, value);
+    }
+    break;
+#endif
     case OPUS_GET_LOOKAHEAD_REQUEST:
     {
       opus_int32 *value = va_arg(ap, opus_int32*);
@@ -1003,6 +1011,14 @@ int ope_encoder_ctl(OggOpusEnc *enc, int request, ...) {
       ret = opeint_encoder_ctl2(&enc->st, request, value);
     }
     break;
+#ifdef OPUS_GET_DRED_DURATION_REQUEST
+    case OPUS_GET_DRED_DURATION_REQUEST:
+    {
+      opus_int32 *value = va_arg(ap, opus_int32*);
+      ret = opeint_encoder_ctl2(&enc->st, OPUS_GET_DRED_DURATION_REQUEST, value);
+    }
+    break;
+#endif
     case OPUS_MULTISTREAM_GET_ENCODER_STATE_REQUEST:
     {
       opus_int32 stream_id;

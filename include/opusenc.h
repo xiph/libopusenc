@@ -219,7 +219,7 @@ OPE_EXPORT OggOpusComments *ope_comments_create(void);
     \return Deep copy of input. */
 OPE_EXPORT OggOpusComments *ope_comments_copy(OggOpusComments *comments);
 
-/** Destroys a comments object.
+/** Destroy a comments object.
     \param comments Comments object to destroy*/
 OPE_EXPORT void ope_comments_destroy(OggOpusComments *comments);
 
@@ -242,7 +242,7 @@ OPE_EXPORT int ope_comments_add_string(OggOpusComments *comments, const char *ta
     \param[in,out] comments     Where to add the comments
     \param         filename     File name for the picture
     \param         picture_type Type of picture (-1 for default)
-    \param         description  Description (NULL means no comment)
+    \param         description  Description (NULL if none)
     \return Error code
  */
 OPE_EXPORT int ope_comments_add_picture(OggOpusComments *comments, const char *filename, int picture_type, const char *description);
@@ -252,7 +252,7 @@ OPE_EXPORT int ope_comments_add_picture(OggOpusComments *comments, const char *f
     \param         ptr          Pointer to picture in memory
     \param         size         Size of picture pointed to by ptr
     \param         picture_type Type of picture (-1 for default)
-    \param         description  Description (NULL means no comment)
+    \param         description  Description (NULL if none)
     \return Error code
  */
 OPE_EXPORT int ope_comments_add_picture_from_memory(OggOpusComments *comments, const char *ptr, size_t size, int picture_type, const char *description);
@@ -279,7 +279,7 @@ OPE_EXPORT int ope_comments_add_picture_from_memory(OggOpusComments *comments, c
     */
 OPE_EXPORT OggOpusEnc *ope_encoder_create_file(const char *path, OggOpusComments *comments, opus_int32 rate, int channels, int family, int *error);
 
-/** Create a new OggOpus stream to be handled using callbacks
+/** Create a new OggOpus stream to be handled using callbacks.
     \param callbacks  Callback functions
     \param user_data  Pointer to be associated with the stream and passed to the callbacks
     \param comments   Comments associated with the stream
@@ -292,7 +292,7 @@ OPE_EXPORT OggOpusEnc *ope_encoder_create_file(const char *path, OggOpusComments
 OPE_EXPORT OggOpusEnc *ope_encoder_create_callbacks(const OpusEncCallbacks *callbacks, void *user_data,
     OggOpusComments *comments, opus_int32 rate, int channels, int family, int *error);
 
-/** Create a new OggOpus stream to be used along with.ope_encoder_get_page().
+/** Create a new OggOpus stream to be used along with ope_encoder_get_page().
   This is mostly useful for muxing with other streams.
     \param comments   Comments associated with the stream
     \param rate       Input sampling rate (48 kHz is faster)
@@ -333,29 +333,29 @@ OPE_EXPORT int ope_encoder_write(OggOpusEnc *enc, const opus_int16 *pcm, int sam
     \param[in,out] enc Encoder
     \param[out] page   Next available encoded page
     \param[out] len    Size (in bytes) of the page returned
-    \param flush       If non-zero, forces a flush of the page (if any data avaiable)
+    \param flush       If non-zero, force a flush of the page (if any data available)
     \return 1 if there is a page available, 0 if not. */
 OPE_EXPORT int ope_encoder_get_page(OggOpusEnc *enc, unsigned char **page, opus_int32 *len, int flush);
 
-/** Finalizes the stream, but does not deallocate the object.
+/** Finalize the stream, but do not deallocate the object.
     \param[in,out] enc Encoder
     \return Error code
  */
 OPE_EXPORT int ope_encoder_drain(OggOpusEnc *enc);
 
-/** Deallocates the obect. Make sure to ope_drain() first.
+/** Deallocate the object. To ensure that the stream is finalized, ope_encoder_drain() should be called first.
     \param[in,out] enc Encoder
  */
 OPE_EXPORT void ope_encoder_destroy(OggOpusEnc *enc);
 
-/** Ends the stream and create a new stream within the same file.
+/** End the stream and create a new stream within the same file.
     \param[in,out] enc Encoder
     \param comments   Comments associated with the stream
     \return Error code
  */
 OPE_EXPORT int ope_encoder_chain_current(OggOpusEnc *enc, OggOpusComments *comments);
 
-/** Ends the stream and create a new file.
+/** End the stream and create a new file.
     \param[in,out] enc Encoder
     \param path        Path where to write the new file
     \param comments    Comments associated with the stream
@@ -363,7 +363,7 @@ OPE_EXPORT int ope_encoder_chain_current(OggOpusEnc *enc, OggOpusComments *comme
  */
 OPE_EXPORT int ope_encoder_continue_new_file(OggOpusEnc *enc, const char *path, OggOpusComments *comments);
 
-/** Ends the stream and create a new file (callback-based).
+/** End the stream and create a new stream using the same encoder (callback-based).
     \param[in,out] enc Encoder
     \param user_data   Pointer to be associated with the new stream and passed to the callbacks
     \param comments    Comments associated with the stream
@@ -371,20 +371,20 @@ OPE_EXPORT int ope_encoder_continue_new_file(OggOpusEnc *enc, const char *path, 
  */
 OPE_EXPORT int ope_encoder_continue_new_callbacks(OggOpusEnc *enc, void *user_data, OggOpusComments *comments);
 
-/** Write out the header now rather than wait for audio to begin.
+/** Write out the header now rather than waiting for audio to begin.
     \param[in,out] enc Encoder
     \return Error code
  */
 OPE_EXPORT int ope_encoder_flush_header(OggOpusEnc *enc);
 
-/** Sets encoder options.
+/** Set encoder options.
     \param[in,out] enc Encoder
     \param request     Use a request macro
     \return Error code
  */
 OPE_EXPORT int ope_encoder_ctl(OggOpusEnc *enc, int request, ...);
 
-/** Converts a libopusenc error code into a human readable string.
+/** Convert a libopusenc error code into a human readable string.
   *
   * @param error Error number
   * @returns Error string
